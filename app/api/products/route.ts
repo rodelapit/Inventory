@@ -14,21 +14,29 @@ type ProductSelectRow = {
 };
 
 export async function GET() {
+  console.log("GET /api/products called");
+  console.log("SUPABASE_SERVICE_ROLE_KEY present:", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+  console.log("SUPABASE_SERVICE_ROLE_KEY length:", process.env.SUPABASE_SERVICE_ROLE_KEY?.length ?? 0);
+
   if (!isSupabaseConfigured()) {
+    console.error("Supabase not configured");
     return NextResponse.json({ error: "Supabase not configured", data: [] }, { status: 500 });
   }
 
   try {
+    console.log("Creating Supabase client...");
     const supabase = createSupabaseServerClient();
+    console.log("Querying products table...");
     const { data, error } = await supabase
       .from("products")
       .select("sku, product_name, category, stock_level, status, price, supplier, storage_zone")
       .order("product_name", { ascending: true });
 
     if (error) {
-      console.error("API /api/products select error", error);
+      console.error("API /api/products select error:", JSON.stringify(error));
       return NextResponse.json({ error: error.message, data: [] }, { status: 500 });
     }
+    console.log("Query successful, rows returned:", data?.length ?? 0);
 
     const rows = (data ?? []).map((p: ProductSelectRow) => ({
       sku: p.sku,
@@ -43,7 +51,8 @@ export async function GET() {
 
     return NextResponse.json({ data: rows });
   } catch (err) {
-    console.error("Unexpected error in /api/products", err);
+    console.error("Unexpected error in /api/products:", err instanceof Error ? err.message : String(err));
+    console.error("Full error:", err);
     return NextResponse.json({ error: "Unexpected error", data: [] }, { status: 500 });
   }
 }
