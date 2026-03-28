@@ -141,13 +141,21 @@ export async function getDashboardData(): Promise<DashboardData> {
 
     const productRows: DashboardProductRow[] = (products ?? []) as DashboardProductRow[];
 
-    const productFeed = productRows.map((p) => ({
-      sku: p.sku,
-      productName: p.product_name,
-      stockLevel: p.stock_level ?? 0,
-      expiration: p.expiration ? new Date(p.expiration).toLocaleDateString() : "",
-      status: p.status ?? "In Stock",
-    }));
+    const productFeed: ProductFeedItem[] = productRows.map((p) => {
+      const rawStatus = (p.status ?? "").toString().trim();
+      const status: ProductFeedItem["status"] =
+        rawStatus === "Low" || rawStatus === "Critical" || rawStatus === "In Stock"
+          ? (rawStatus as ProductFeedItem["status"])
+          : "In Stock";
+
+      return {
+        sku: p.sku,
+        productName: p.product_name,
+        stockLevel: p.stock_level ?? 0,
+        expiration: p.expiration ? new Date(p.expiration).toLocaleDateString() : "",
+        status,
+      };
+    });
 
     // Calculate stats from products
     const totalProducts = productFeed.length;

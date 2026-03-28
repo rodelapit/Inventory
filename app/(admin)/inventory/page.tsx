@@ -3,6 +3,7 @@ import { ThemeProvider } from "../../../components/ThemeProvider/ThemeProvider";
 import { PageHeader } from "../../../components/dashboard/admin/PageHeader";
 import { InventoryStatsLive } from "../../../components/dashboard/admin/InventoryStatsLive";
 import { InventoryZonesSectionLive } from "../../../components/dashboard/admin/InventoryZonesSectionLive";
+import type { InventoryZone } from "../../../components/dashboard/admin/InventoryZonesSection";
 import { Package, Archive, TrendingUp, BarChart3, Filter } from "lucide-react";
 import Link from "next/link";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
