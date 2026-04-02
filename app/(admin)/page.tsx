@@ -6,6 +6,8 @@ import { getAdminPerformanceData } from "@/lib/dashboard/get-admin-performance-d
 
 export default async function Home() {
   const performanceData = await getAdminPerformanceData();
+  const notifications = performanceData.recentActivity;
+  const notificationCount = notifications.length;
 
   const todayLabel = new Intl.DateTimeFormat("en-US", {
     month: "long",
@@ -37,34 +39,66 @@ export default async function Home() {
               </div>
 
               <div className="ml-auto flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
-                <div className="flex min-w-0 items-center gap-3 rounded-full border border-slate-900/8 bg-white/85 px-4 py-3 shadow-[0_20px_45px_rgba(148,163,184,0.16)] sm:min-w-[18rem]">
-                  <Search className="h-4 w-4 text-slate-400" />
-                  <span className="truncate text-sm text-slate-500">Search products, zones, or alerts</span>
-                </div>
-                <div
-                  id="admin-status"
-                  className="scroll-mt-4 hidden items-center gap-3 rounded-full border border-slate-900/8 bg-white/85 px-4 py-3 text-xs font-semibold text-slate-700 shadow-[0_20px_45px_rgba(148,163,184,0.16)] sm:flex"
+                <form
+                  action="/products"
+                  method="get"
+                  className="flex min-w-0 items-center gap-3 rounded-full border border-slate-900/8 bg-white/85 px-4 py-2.5 shadow-[0_20px_45px_rgba(148,163,184,0.16)] sm:min-w-[18rem]"
                 >
-                  <span className="relative flex h-2.5 w-2.5 items-center justify-center rounded-full bg-sky-500">
-                    <span className="absolute inline-flex h-4 w-4 rounded-full bg-sky-500/25" />
-                  </span>
-                  <span className="whitespace-nowrap">Control room online</span>
-                  <span className="rounded-full bg-sky-500/10 px-2.5 py-0.5 text-[11px] text-sky-700">
-                    Live sync active
-                  </span>
-                </div>
+                  <Search className="h-4 w-4 text-slate-400" />
+                  <input
+                    type="search"
+                    name="q"
+                    placeholder="Search products, SKU, supplier"
+                    className="w-full min-w-0 bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-500"
+                  />
+                </form>
                 <div className="flex items-center gap-3">
                   <div className="hidden items-center gap-2 rounded-full border border-slate-900/8 bg-white/85 px-4 py-3 text-sm text-slate-600 shadow-[0_20px_45px_rgba(148,163,184,0.16)] md:flex">
                     <CalendarDays className="h-4 w-4 text-sky-700" />
                     <span>{todayLabel}</span>
                   </div>
-                  <button
-                    aria-label="Notifications"
-                    className="relative flex h-11 w-11 items-center justify-center rounded-full border border-slate-900/8 bg-white/88 text-slate-700 shadow-[0_20px_45px_rgba(148,163,184,0.16)] transition hover:-translate-y-0.5 hover:bg-white"
-                  >
-                    <Bell className="h-4 w-4" />
-                    <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full bg-rose-500" />
-                  </button>
+                  <details className="group relative">
+                    <summary
+                      aria-label="Notifications"
+                      className="relative flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-full border border-slate-900/8 bg-white/88 text-slate-700 shadow-[0_20px_45px_rgba(148,163,184,0.16)] transition hover:-translate-y-0.5 hover:bg-white"
+                    >
+                      <Bell className="h-4 w-4" />
+                      {notificationCount > 0 ? (
+                        <>
+                          <span className="absolute right-2 top-2 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-none text-white">
+                            {notificationCount}
+                          </span>
+                          <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full bg-rose-500" />
+                        </>
+                      ) : null}
+                    </summary>
+
+                    <div className="absolute right-0 top-14 z-30 w-[min(24rem,88vw)] rounded-2xl border border-slate-900/8 bg-white/98 p-3 shadow-[0_24px_55px_rgba(148,163,184,0.3)] opacity-0 transition group-open:opacity-100">
+                      <div className="mb-2 flex items-center justify-between px-1">
+                        <p className="text-sm font-semibold text-slate-900">Notifications</p>
+                        <p className="text-xs text-slate-500">{notificationCount} new</p>
+                      </div>
+
+                      <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+                        {notifications.length > 0 ? (
+                          notifications.map((item, index) => (
+                            <article
+                              key={`${item.actor}-${item.time}-${index}`}
+                              className="rounded-xl border border-slate-900/8 bg-slate-50/70 p-3"
+                            >
+                              <p className="text-sm font-semibold text-slate-900">{item.actor}</p>
+                              <p className="mt-1 text-sm text-slate-600">{item.action}</p>
+                              <p className="mt-2 text-xs font-medium text-sky-700">{item.time}</p>
+                            </article>
+                          ))
+                        ) : (
+                          <div className="rounded-xl border border-slate-900/8 bg-slate-50/70 p-3 text-sm text-slate-600">
+                            No notifications right now.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </details>
                 </div>
               </div>
             </div>

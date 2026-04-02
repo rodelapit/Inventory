@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 type ProductRow = {
   sku: string;
@@ -14,11 +15,13 @@ type ProductRow = {
 };
 
 export default function ProductsClient({ initialRows }: { initialRows: ProductRow[] }) {
+  const searchParams = useSearchParams();
+  const searchFromUrl = searchParams.get("q") ?? "";
   const [rows, setRows] = useState<ProductRow[]>(initialRows ?? []);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(searchFromUrl);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "in-stock" | "low" | "critical">("all");
   const [form, setForm] = useState({
@@ -56,6 +59,10 @@ export default function ProductsClient({ initialRows }: { initialRows: ProductRo
       clearInterval(t);
     };
   }, []);
+
+  useEffect(() => {
+    setSearch(searchFromUrl);
+  }, [searchFromUrl]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

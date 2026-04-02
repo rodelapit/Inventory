@@ -25,7 +25,7 @@ export function StatCard({ stat }: StatCardProps) {
       : "text-slate-700 border-slate-900/8 bg-slate-100";
 
   return (
-    <div className="overflow-hidden rounded-[30px] border border-slate-900/8 bg-[rgba(255,255,255,0.82)] p-6 shadow-[0_24px_60px_rgba(148,163,184,0.18)] transition hover:-translate-y-0.5 hover:shadow-[0_28px_70px_rgba(148,163,184,0.22)]">
+    <div className="overflow-hidden rounded-[30px] border border-emerald-100 bg-white p-6 shadow-[0_24px_60px_rgba(148,163,184,0.14)] transition hover:-translate-y-0.5 hover:shadow-[0_28px_70px_rgba(148,163,184,0.18)]">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">{stat.title}</p>
@@ -33,8 +33,8 @@ export function StatCard({ stat }: StatCardProps) {
             {typeof stat.value === "number" ? stat.value.toLocaleString() : stat.value}
           </p>
         </div>
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-900/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.95),rgba(224,242,254,0.9))] shadow-[0_18px_32px_rgba(148,163,184,0.18)]">
-          <Icon className="h-6 w-6 text-sky-700" />
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-100 bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(220,252,231,0.85))] shadow-[0_18px_32px_rgba(148,163,184,0.14)]">
+          <Icon className="h-6 w-6 text-emerald-700" />
         </div>
       </div>
       <div className="mt-5 flex items-center justify-between gap-3">

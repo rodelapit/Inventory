@@ -15,24 +15,24 @@ export function ProductManagementSection({
   return (
     <section
       id="product-feed"
-      className="scroll-mt-4 overflow-hidden rounded-[34px] border border-slate-900/8 bg-[rgba(255,255,255,0.84)] shadow-[0_30px_70px_rgba(148,163,184,0.18)] lg:flex-1"
+      className="scroll-mt-4 overflow-hidden rounded-[34px] border border-emerald-100 bg-white shadow-[0_30px_70px_rgba(148,163,184,0.14)] lg:flex-1"
     >
-      <div className="border-b border-slate-900/8 px-4 py-5 sm:px-5 lg:px-6">
+      <div className="border-b border-emerald-100 px-4 py-5 sm:px-5 lg:px-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Operations stream</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-700">Operations stream</p>
             <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950 sm:text-3xl">Live product feed</h2>
             <p className="mt-2 text-sm text-slate-600">Real-time inventory signals with clearer status cues and faster scanning.</p>
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <span className="rounded-full border border-emerald-500/14 bg-emerald-500/10 px-3.5 py-2 text-sm font-semibold text-emerald-700">
+            <span className="rounded-full border border-emerald-100 bg-emerald-50 px-3.5 py-2 text-sm font-semibold text-emerald-700">
               {inStockCount} in stock
             </span>
-            <span className="rounded-full border border-amber-500/14 bg-amber-500/10 px-3.5 py-2 text-sm font-semibold text-amber-700">
+            <span className="rounded-full border border-emerald-100 bg-emerald-50 px-3.5 py-2 text-sm font-semibold text-emerald-700">
               {lowCount} low
             </span>
-            <span className="rounded-full border border-rose-500/14 bg-rose-500/10 px-3.5 py-2 text-sm font-semibold text-rose-700">
+            <span className="rounded-full border border-rose-100 bg-rose-50 px-3.5 py-2 text-sm font-semibold text-rose-700">
               {criticalCount} critical
             </span>
           </div>
@@ -47,13 +47,13 @@ export function ProductManagementSection({
                 placeholder="Search products or SKU..."
                 readOnly
                 value=""
-                className="w-full rounded-full border border-slate-900/8 bg-slate-50 py-3 pl-11 pr-4 text-sm text-slate-700 outline-none placeholder:text-slate-400 sm:text-base"
+                className="w-full rounded-full border border-emerald-100 bg-emerald-50 py-3 pl-11 pr-4 text-sm text-slate-700 outline-none placeholder:text-slate-400 sm:text-base"
               />
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <button className="flex items-center gap-2 rounded-full border border-slate-900/8 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:bg-slate-50">
+            <button className="flex items-center gap-2 rounded-full border border-emerald-100 bg-white px-4 py-3 text-sm font-semibold text-emerald-700 transition hover:-translate-y-0.5 hover:bg-emerald-50">
               <Filter className="h-4 w-4" />
               <span>Filter</span>
             </button>
@@ -76,10 +76,10 @@ export function ProductManagementSection({
             {productFeed.map((item, index) => (
               <tr
                 key={`${item.sku}-${item.expiration}-${index}`}
-                className="border-t border-slate-900/8 text-xs text-slate-700 transition hover:bg-slate-50 sm:text-sm xl:text-base"
+                className="border-t border-emerald-100 text-xs text-slate-700 transition hover:bg-emerald-50/70 sm:text-sm xl:text-base"
               >
                 <td className="px-3.5 py-4 font-semibold text-sky-700 sm:px-5 lg:px-6">
-                  <span className="rounded-full border border-sky-500/14 bg-sky-500/10 px-3 py-1.5 text-xs font-semibold tracking-[0.14em] text-sky-700">
+                  <span className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-xs font-semibold tracking-[0.14em] text-emerald-700">
                     {item.sku}
                   </span>
                 </td>

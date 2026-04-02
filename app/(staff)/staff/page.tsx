@@ -25,16 +25,16 @@ export default async function StaffDashboardPage() {
           <StaffSidebar />
 
           <main className="flex min-w-0 flex-col bg-(--bg)">
-            <header className="flex shrink-0 items-center justify-between border-b border-emerald-900/70 bg-[#02131f] px-4 py-3 sm:px-6">
+            <header className="flex shrink-0 items-center justify-between border-b border-emerald-100 bg-white px-4 py-3 sm:px-6">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-400/80">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">
                   Staff workspace
                 </p>
-                <p className="mt-1 text-sm font-semibold text-emerald-50/90">Today&apos;s store operations</p>
+                <p className="mt-1 text-sm font-semibold text-slate-600">Today&apos;s store operations</p>
               </div>
               <div className="ml-auto flex items-center gap-3">
-                <div className="flex items-center gap-2 rounded-full bg-emerald-500/20 px-3 py-1.5 text-xs font-semibold text-emerald-50">
-                  <span className="relative flex h-2.5 w-2.5 items-center justify-center rounded-full bg-emerald-400">
+                <div className="flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+                  <span className="relative flex h-2.5 w-2.5 items-center justify-center rounded-full bg-emerald-500">
                     <span className="absolute inline-flex h-4 w-4 rounded-full bg-emerald-400/40" />
                   </span>
                   <span className="whitespace-nowrap">On shift</span>
@@ -55,12 +55,12 @@ export default async function StaffDashboardPage() {
 
                 <section
                   aria-label="Staff product view"
-                  className="scroll-mt-4 flex min-h-0 flex-col overflow-hidden rounded-2xl border border-emerald-900/60 bg-(--card-bg) pt-3.5 shadow-[0_0_32px_rgba(5,46,32,0.9)] lg:flex-1"
+                  className="scroll-mt-4 flex min-h-0 flex-col overflow-hidden rounded-2xl border border-emerald-100 bg-(--card-bg) pt-3.5 shadow-[0_20px_50px_rgba(148,163,184,0.14)] lg:flex-1"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3 px-4 pb-3 sm:px-5 lg:px-6 lg:pb-4">
                     <div>
-                      <h2 className="text-2xl font-bold text-white sm:text-3xl">Products &amp; Stock</h2>
-                      <p className="mt-1 text-sm text-slate-400">
+                      <h2 className="text-2xl font-bold text-emerald-950 sm:text-3xl">Products &amp; Stock</h2>
+                      <p className="mt-1 text-sm text-slate-600">
                         View products, update quantities, and check low / expiring items.
                       </p>
                     </div>

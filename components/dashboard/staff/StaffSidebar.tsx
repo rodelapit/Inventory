@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { Home, Package, ClipboardList } from "lucide-react";
 
 const staffNavItems = [
@@ -12,20 +13,41 @@ const staffNavItems = [
 
 export function StaffSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  useEffect(() => {
+    const prefetchAll = () => {
+      for (const item of staffNavItems) {
+        router.prefetch(item.href);
+      }
+    };
+
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      const id = window.requestIdleCallback(prefetchAll);
+      return () => window.cancelIdleCallback(id);
+    }
+
+    const timeoutId = window.setTimeout(prefetchAll, 200);
+    return () => window.clearTimeout(timeoutId);
+  }, [router]);
+
+  const prefetchRoute = (href: string) => {
+    router.prefetch(href);
+  };
 
   return (
-    <aside className="border-b border-emerald-900/70 bg-[#020817] text-emerald-50 lg:h-screen lg:border-r lg:border-b-0">
-      <div className="border-b border-emerald-900/70 px-4 py-3 sm:px-5 lg:hidden">
+    <aside className="border-b border-emerald-100 bg-white text-slate-800 lg:h-screen lg:border-r lg:border-b-0">
+      <div className="border-b border-emerald-100 px-4 py-3 sm:px-5 lg:hidden">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-xl font-bold text-emerald-400">SmartStock</p>
-            <p className="text-xs text-emerald-200/70">Staff Workspace</p>
+            <p className="text-xl font-bold text-emerald-700">SmartStock</p>
+            <p className="text-xs text-slate-500">Staff Workspace</p>
           </div>
-          <div className="rounded-full bg-emerald-500/15 px-3 py-1 text-right">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
+          <div className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-right">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-600">
               Shift
             </p>
-            <p className="text-sm font-bold text-white">Live</p>
+            <p className="text-sm font-bold text-emerald-900">Live</p>
           </div>
         </div>
 
@@ -34,10 +56,12 @@ export function StaffSidebar() {
             <Link
               key={item.label}
               href={item.href}
+              onMouseEnter={() => prefetchRoute(item.href)}
+              onFocus={() => prefetchRoute(item.href)}
               className={`shrink-0 rounded-full px-3 py-2 text-sm font-semibold transition ${
                 pathname === item.href
-                  ? "bg-emerald-500/20 text-emerald-200"
-                  : "border border-white/10 text-emerald-100 hover:bg-white/5"
+                  ? "bg-emerald-600 text-white shadow-sm"
+                  : "border border-emerald-100 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700"
               }`}
             >
               {item.label}
@@ -47,13 +71,13 @@ export function StaffSidebar() {
       </div>
 
       <div className="hidden h-full flex-col overflow-x-hidden overflow-y-auto lg:flex">
-        <div className="border-b border-emerald-900/70 px-4 py-3.5 sm:px-5 sm:py-4">
-          <p className="text-xl font-bold text-emerald-400 sm:text-2xl">SmartStock</p>
-          <p className="text-xs text-emerald-200/80 sm:text-sm">Staff Workspace</p>
+        <div className="border-b border-emerald-100 px-4 py-3.5 sm:px-5 sm:py-4">
+          <p className="text-xl font-bold text-emerald-700 sm:text-2xl">SmartStock</p>
+          <p className="text-xs text-slate-500 sm:text-sm">Staff Workspace</p>
         </div>
 
         <div className="px-4 py-3.5 sm:px-5 sm:py-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-500/80 sm:text-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 sm:text-sm">
             Today&apos;s tools
           </p>
           <nav className="mt-4 grid gap-2.5">
@@ -64,17 +88,19 @@ export function StaffSidebar() {
                 <Link
                   key={item.label}
                   href={item.href}
+                  onMouseEnter={() => prefetchRoute(item.href)}
+                  onFocus={() => prefetchRoute(item.href)}
                   className={`flex w-full items-center justify-between rounded-xl px-3.5 py-2 text-left text-sm font-semibold transition sm:text-base ${
                     active
-                      ? "bg-emerald-500/20 text-emerald-100"
-                      : "text-emerald-50/80 hover:bg-white/5"
+                      ? "bg-emerald-600 text-white shadow-sm"
+                      : "text-slate-700 hover:bg-emerald-50 hover:text-emerald-700"
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <Icon className="h-5 w-5" />
                     <span>{item.label}</span>
                   </div>
-                  {active && <span className="h-2 w-2 rounded-full bg-emerald-300" />}
+                  {active && <span className="h-2 w-2 rounded-full bg-white" />}
                 </Link>
               );
             })}
@@ -82,11 +108,11 @@ export function StaffSidebar() {
         </div>
 
         <div className="mt-auto p-4 sm:p-4.5">
-          <div className="rounded-2xl bg-emerald-600/20 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200 sm:text-sm">
+          <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700 sm:text-sm">
               Shift focus
             </p>
-            <p className="mt-2 text-sm text-emerald-50/90">
+            <p className="mt-2 text-sm text-slate-600">
               Quickly check low stock, expiry alerts, and update quantities as you process sales.
             </p>
           </div>

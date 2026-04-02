@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { BarChart3, ChevronRight, Home, Package, ShieldCheck, Users } from "lucide-react";
 
 const navItems = [
@@ -14,6 +15,27 @@ const navItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  useEffect(() => {
+    const prefetchAll = () => {
+      for (const item of navItems) {
+        router.prefetch(item.href);
+      }
+    };
+
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      const id = window.requestIdleCallback(prefetchAll);
+      return () => window.cancelIdleCallback(id);
+    }
+
+    const timeoutId = window.setTimeout(prefetchAll, 200);
+    return () => window.clearTimeout(timeoutId);
+  }, [router]);
+
+  const prefetchRoute = (href: string) => {
+    router.prefetch(href);
+  };
 
   return (
     <aside className="relative border-b border-slate-900/8 bg-[rgba(255,255,255,0.76)] text-slate-900 backdrop-blur-2xl lg:h-screen lg:border-r lg:border-b-0">
@@ -40,6 +62,8 @@ export function AppSidebar() {
               <Link
                 key={item.label}
                 href={item.href}
+                onMouseEnter={() => prefetchRoute(item.href)}
+                onFocus={() => prefetchRoute(item.href)}
                 className={`rounded-2xl border px-3 py-2.5 text-sm font-semibold transition ${
                   active
                     ? "border-emerald-500/18 bg-emerald-500/10 text-slate-950 shadow-[0_18px_34px_rgba(16,185,129,0.12)]"
@@ -77,6 +101,8 @@ export function AppSidebar() {
                 <Link
                   key={item.label}
                   href={item.href}
+                  onMouseEnter={() => prefetchRoute(item.href)}
+                  onFocus={() => prefetchRoute(item.href)}
                   className={`group flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition ${
                     active
                       ? "border-emerald-500/18 bg-white text-slate-950 shadow-[0_22px_40px_rgba(148,163,184,0.2)]"

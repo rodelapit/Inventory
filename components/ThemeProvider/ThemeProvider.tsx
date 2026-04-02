@@ -22,11 +22,11 @@ const themes: Record<ThemeName, Theme> = {
     "--text": "#e6eef8",
   },
   staff: {
-    "--bg": "#020817",
-    "--card-bg": "#02131f",
-    "--accent": "#22c55e",
-    "--accent-2": "#0ea5e9",
-    "--text": "#e5f9f0",
+    "--bg": "#f6fbf6",
+    "--card-bg": "#ffffff",
+    "--accent": "#16a34a",
+    "--accent-2": "#22c55e",
+    "--text": "#12301f",
   },
   products: {
     "--bg": "#081022",
