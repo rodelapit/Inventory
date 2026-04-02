@@ -144,7 +144,7 @@ export default function ProductsClient({ initialRows }: { initialRows: ProductRo
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-200/80 px-4 pb-4 sm:px-5">
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-200/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(248,250,252,0.65))] px-4 pb-4 pt-3 sm:px-5">
         <div className="w-full min-w-0 sm:flex-1">
           <div className="relative">
             <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">
@@ -155,7 +155,7 @@ export default function ProductsClient({ initialRows }: { initialRows: ProductRo
               placeholder="Search products, SKU, category, supplier"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white py-2.5 pl-16 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 sm:text-base"
+              className="w-full rounded-full border border-slate-200 bg-white py-2.5 pl-16 pr-4 text-sm text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.05)] outline-none transition placeholder:text-slate-400 focus:border-emerald-400 sm:text-base"
             />
           </div>
         </div>
@@ -165,7 +165,7 @@ export default function ProductsClient({ initialRows }: { initialRows: ProductRo
             aria-label="Filter by category"
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 outline-none transition focus:border-emerald-400 sm:text-sm"
+            className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.04)] outline-none transition focus:border-emerald-400 sm:text-sm"
           >
             <option value="all">All categories</option>
             {categories.map((cat) => (
@@ -178,7 +178,7 @@ export default function ProductsClient({ initialRows }: { initialRows: ProductRo
             aria-label="Filter by stock status"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 outline-none transition focus:border-emerald-400 sm:text-sm"
+            className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.04)] outline-none transition focus:border-emerald-400 sm:text-sm"
           >
             <option value="all">All stock states</option>
             <option value="in-stock">In stock</option>
@@ -186,13 +186,13 @@ export default function ProductsClient({ initialRows }: { initialRows: ProductRo
             <option value="critical">Critical</option>
           </select>
 
-          <button className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 sm:text-sm">
+          <button className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition hover:bg-slate-50 sm:text-sm">
             Export
           </button>
 
           <button
             onClick={() => setShowModal(true)}
-            className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-[0_12px_30px_rgba(16,185,129,0.35)] transition hover:bg-emerald-700 sm:text-sm"
+            className="rounded-full bg-slate-950 px-4 py-2 text-xs font-semibold text-white shadow-[0_16px_32px_rgba(15,23,42,0.2)] transition hover:bg-slate-800 sm:text-sm"
           >
             + Add Product
           </button>
@@ -200,10 +200,13 @@ export default function ProductsClient({ initialRows }: { initialRows: ProductRo
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/35 px-3 backdrop-blur-[2px]">
-          <div className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_25px_60px_rgba(15,23,42,0.25)]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 px-3 backdrop-blur-md">
+          <div className="w-full max-w-2xl rounded-4xl border border-white/70 bg-white p-6 shadow-[0_30px_80px_rgba(15,23,42,0.28)]">
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-slate-900">Add New Product</h2>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Inventory</p>
+                <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-slate-950">Add New Product</h2>
+              </div>
               <button
                 onClick={() => setShowModal(false)}
                 className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
@@ -220,7 +223,7 @@ export default function ProductsClient({ initialRows }: { initialRows: ProductRo
                   placeholder="PRD-0001"
                   value={form.sku}
                   onChange={(e) => updateField("sku", e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-emerald-400"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-emerald-400"
                 />
               </div>
               <div>
@@ -230,7 +233,7 @@ export default function ProductsClient({ initialRows }: { initialRows: ProductRo
                   placeholder="Product name"
                   value={form.name}
                   onChange={(e) => updateField("name", e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-emerald-400"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-emerald-400"
                 />
               </div>
               <div>
@@ -239,7 +242,7 @@ export default function ProductsClient({ initialRows }: { initialRows: ProductRo
                   placeholder="Beverages"
                   value={form.category}
                   onChange={(e) => updateField("category", e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-emerald-400"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-emerald-400"
                 />
               </div>
               <div>
@@ -250,7 +253,7 @@ export default function ProductsClient({ initialRows }: { initialRows: ProductRo
                   placeholder="0"
                   value={form.quantity}
                   onChange={(e) => updateField("quantity", e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-emerald-400"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-emerald-400"
                 />
               </div>
               <div>
@@ -262,7 +265,7 @@ export default function ProductsClient({ initialRows }: { initialRows: ProductRo
                   placeholder="0.00"
                   value={form.price}
                   onChange={(e) => updateField("price", e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-emerald-400"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-emerald-400"
                 />
               </div>
               <div>
@@ -271,7 +274,7 @@ export default function ProductsClient({ initialRows }: { initialRows: ProductRo
                   aria-label="Product status"
                   value={form.status}
                   onChange={(e) => updateField("status", e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-emerald-400"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-emerald-400"
                 >
                   <option value="In Stock">In Stock</option>
                   <option value="Low">Low</option>
@@ -284,7 +287,7 @@ export default function ProductsClient({ initialRows }: { initialRows: ProductRo
                   aria-label="Storage zone"
                   value={form.storage_zone}
                   onChange={(e) => updateField("storage_zone", e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-emerald-400"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-emerald-400"
                 >
                   <option value="">Unassigned</option>
                   <option value="A">Zone A - Ambient</option>
@@ -301,7 +304,7 @@ export default function ProductsClient({ initialRows }: { initialRows: ProductRo
                   placeholder="Supplier name"
                   value={form.supplier}
                   onChange={(e) => updateField("supplier", e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-emerald-400"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-emerald-400"
                 />
               </div>
 
@@ -309,14 +312,14 @@ export default function ProductsClient({ initialRows }: { initialRows: ProductRo
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="rounded-xl bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(16,185,129,0.35)] transition hover:bg-emerald-700 disabled:opacity-60"
+                  className="rounded-full bg-slate-950 px-5 py-2 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(15,23,42,0.2)] transition hover:bg-slate-800 disabled:opacity-60"
                 >
                   {submitting ? "Adding..." : "+ Add Product"}
                 </button>
@@ -328,7 +331,7 @@ export default function ProductsClient({ initialRows }: { initialRows: ProductRo
 
       <div className="min-h-0 overflow-x-auto px-2 sm:px-4">
         <table className="mt-2 w-full min-w-180 text-left text-xs text-slate-700 sm:text-sm">
-          <thead className="border-y border-slate-200 bg-slate-50 text-[11px] uppercase tracking-[0.15em] text-slate-500 sm:text-xs">
+          <thead className="border-y border-slate-200/70 bg-white/80 text-[11px] uppercase tracking-[0.15em] text-slate-500 shadow-[inset_0_-1px_0_rgba(15,23,42,0.04)] sm:text-xs">
             <tr>
               <th className="px-3 py-3 sm:px-4">SKU</th>
               <th className="px-3 py-3 sm:px-4">Product</th>
@@ -342,7 +345,7 @@ export default function ProductsClient({ initialRows }: { initialRows: ProductRo
           </thead>
           <tbody>
             {filteredRows.map((row, index) => (
-              <tr key={`${row.sku}-${row.name}-${index}`} className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/80">
+              <tr key={`${row.sku}-${row.name}-${index}`} className="border-b border-slate-100/80 last:border-b-0 hover:bg-slate-50/80">
                 <td className="px-3 py-3 font-semibold text-indigo-600 sm:px-4">{row.sku}</td>
                 <td className="px-3 py-3 font-semibold text-slate-900 sm:px-4">{row.name}</td>
                 <td className="px-3 py-3 text-slate-600 sm:px-4">{row.category}</td>
@@ -355,7 +358,7 @@ export default function ProductsClient({ initialRows }: { initialRows: ProductRo
                 <td className="px-3 py-3 font-mono font-semibold text-emerald-700 sm:px-4">${row.price.toFixed(2)}</td>
                 <td className="px-3 py-3 text-slate-600 sm:px-4">{row.supplier}</td>
                 <td className="px-3 py-3 sm:px-4">
-                  <button className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100 sm:text-xs">
+                  <button className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,0.04)] transition hover:bg-slate-100 sm:text-xs">
                     Manage
                   </button>
                 </td>

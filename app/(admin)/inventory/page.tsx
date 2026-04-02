@@ -91,7 +91,8 @@ type InventoryProduct = {
 export default async function InventoryPage() {
   // fetch latest products directly from Supabase to avoid server-side relative URL fetch issues
   let products: InventoryProduct[] = [];
-  if (isSupabaseConfigured()) {
+  const supabaseConfigured = isSupabaseConfigured();
+  if (supabaseConfigured) {
     try {
       const supabase = createSupabaseServerClient();
       const { data, error } = await supabase
@@ -159,6 +160,11 @@ export default async function InventoryPage() {
 
           <ThemeProvider initial="inventory">
             <div className="flex-1 space-y-8 px-4 py-8 sm:px-6 lg:px-8 xl:px-10">
+              {!supabaseConfigured ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  Live data unavailable. Supabase is not configured, so inventory metrics may be empty.
+                </div>
+              ) : null}
               {/* Statistics Overview */}
               <section>
                 <div className="mb-6">

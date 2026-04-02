@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { mockDashboardData } from "@/data/dashboard";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 type ExportProductRow = {
@@ -45,10 +44,13 @@ function daysUntil(date: Date): number {
 
 export async function GET() {
   try {
-    const products = await (async () => {
-      if (!isSupabaseConfigured()) return mockDashboardData.productFeed;
+    if (!isSupabaseConfigured()) {
+      return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
+    }
 
-      const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseServerClient();
+
+    const products = await (async () => {
       const { data, error } = await supabase
         .from("products")
         .select("sku, product_name, stock_level, status, expiration")
@@ -56,7 +58,7 @@ export async function GET() {
 
       if (error) {
         console.error("Export reports products fetch error", error);
-        return mockDashboardData.productFeed;
+        throw new Error("Unable to load products for export");
       }
 
       return ((data ?? []) as ExportProductRow[]).map((p) => {
@@ -73,9 +75,6 @@ export async function GET() {
     })();
 
     const zones = await (async () => {
-      if (!isSupabaseConfigured()) return mockDashboardData.zoneCards;
-
-      const supabase = createSupabaseServerClient();
       const { data, error } = await supabase
         .from("zones")
         .select("id, label, name, current")
@@ -83,7 +82,7 @@ export async function GET() {
 
       if (error) {
         console.error("Export reports zones fetch error", error);
-        return mockDashboardData.zoneCards;
+        throw new Error("Unable to load zones for export");
       }
 
       return ((data ?? []) as ExportZoneRow[]).map((z) => ({

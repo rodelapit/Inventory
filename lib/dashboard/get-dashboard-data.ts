@@ -1,4 +1,4 @@
-import { mockDashboardData, type ActiveAlert, type DashboardData, type ProductFeedItem, type ZoneCard } from "@/data/dashboard";
+import type { ActiveAlert, DashboardData, ProductFeedItem, StatCard, ZoneCard } from "@/data/dashboard";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 type DashboardProductRow = {
@@ -9,6 +9,55 @@ type DashboardProductRow = {
   expiration?: string | null;
   status?: string | null;
   storage_zone?: string | null;
+};
+
+function buildStatCards(totalProducts: number, lowStockItems: number): StatCard[] {
+  return [
+    {
+      title: "Total Products",
+      value: totalProducts,
+      change: "Live",
+      changeType: "neutral",
+      iconName: "Package",
+    },
+    {
+      title: "Low Stock Items",
+      value: lowStockItems,
+      change: "Live",
+      changeType: "neutral",
+      iconName: "AlertTriangle",
+    },
+    {
+      title: "Monthly Sales",
+      value: "$0",
+      change: "Live",
+      changeType: "neutral",
+      iconName: "TrendingUp",
+    },
+    {
+      title: "Active Users",
+      value: 0,
+      change: "Live",
+      changeType: "neutral",
+      iconName: "Users",
+    },
+  ];
+}
+
+const emptyDashboardData: DashboardData = {
+  systemStatusTitle: "Live Sync Active",
+  systemStatusMessage: "Connected to Supabase realtime feed.",
+  statCards: buildStatCards(0, 0),
+  zoneCards: [],
+  activeAlerts: [
+    {
+      title: "No urgent alerts",
+      message: "Stock and expiration checks are currently within safe thresholds.",
+      age: "Live update",
+      type: "info",
+    },
+  ],
+  productFeed: [],
 };
 
 function parseDate(value: string): Date | null {
@@ -97,7 +146,7 @@ function buildZoneCards(
   }
 
   if (zoneTotals.size === 0) {
-    return mockDashboardData.zoneCards;
+    return [];
   }
 
   const totalUnits = Array.from(zoneTotals.values()).reduce((sum, units) => sum + units, 0);
@@ -119,10 +168,7 @@ function buildZoneCards(
 
 export async function getDashboardData(): Promise<DashboardData> {
   if (!isSupabaseConfigured()) {
-    return {
-      ...mockDashboardData,
-      activeAlerts: buildActiveAlerts(mockDashboardData.productFeed),
-    };
+    return emptyDashboardData;
   }
 
   const supabase = createSupabaseServerClient();
@@ -136,7 +182,7 @@ export async function getDashboardData(): Promise<DashboardData> {
 
     if (error) {
       console.error("Supabase error fetching products:", error);
-      return mockDashboardData;
+      return emptyDashboardData;
     }
 
     const productRows: DashboardProductRow[] = (products ?? []) as DashboardProductRow[];
@@ -159,25 +205,17 @@ export async function getDashboardData(): Promise<DashboardData> {
 
     // Calculate stats from products
     const totalProducts = productFeed.length;
-    const lowStockItems = productFeed.filter(p => p.status === "Low" || p.status === "Critical").length;
+    const lowStockItems = productFeed.filter((p) => p.status === "Low" || p.status === "Critical").length;
 
     return {
-      ...mockDashboardData,
+      ...emptyDashboardData,
       productFeed,
       zoneCards: buildZoneCards(productRows),
       activeAlerts: buildActiveAlerts(productFeed),
-      statCards: mockDashboardData.statCards.map(card => {
-        if (card.title === "Total Products") {
-          return { ...card, value: totalProducts };
-        }
-        if (card.title === "Low Stock Items") {
-          return { ...card, value: lowStockItems };
-        }
-        return card;
-      }),
+      statCards: buildStatCards(totalProducts, lowStockItems),
     };
   } catch (err) {
     console.error("Unexpected error in getDashboardData:", err);
-    return mockDashboardData;
+    return emptyDashboardData;
   }
 }

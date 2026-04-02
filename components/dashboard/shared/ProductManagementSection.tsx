@@ -1,16 +1,38 @@
+"use client";
+
+import { useMemo, useState } from "react";
 import type { ProductFeedItem } from "@/data/dashboard";
 import { Search, Filter } from "lucide-react";
 
 type ProductManagementSectionProps = {
   productFeed: ProductFeedItem[];
+  onAdjustStock?: (sku: string, nextStock: number) => Promise<void>;
+  pendingSku?: string | null;
+  actionError?: string | null;
 };
 
 export function ProductManagementSection({
   productFeed,
+  onAdjustStock,
+  pendingSku,
+  actionError,
 }: ProductManagementSectionProps) {
+  const [search, setSearch] = useState("");
+
+  const filteredFeed = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return productFeed;
+
+    return productFeed.filter((item) => {
+      return item.productName.toLowerCase().includes(query) || item.sku.toLowerCase().includes(query);
+    });
+  }, [productFeed, search]);
+
   const inStockCount = productFeed.filter((item) => item.status === "In Stock").length;
   const lowCount = productFeed.filter((item) => item.status === "Low").length;
   const criticalCount = productFeed.filter((item) => item.status === "Critical").length;
+
+  const canAdjust = typeof onAdjustStock === "function";
 
   return (
     <section
@@ -45,8 +67,8 @@ export function ProductManagementSection({
               <input
                 aria-label="Search products"
                 placeholder="Search products or SKU..."
-                readOnly
-                value=""
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
                 className="w-full rounded-full border border-emerald-100 bg-emerald-50 py-3 pl-11 pr-4 text-sm text-slate-700 outline-none placeholder:text-slate-400 sm:text-base"
               />
             </div>
@@ -55,11 +77,17 @@ export function ProductManagementSection({
           <div className="flex items-center gap-2">
             <button className="flex items-center gap-2 rounded-full border border-emerald-100 bg-white px-4 py-3 text-sm font-semibold text-emerald-700 transition hover:-translate-y-0.5 hover:bg-emerald-50">
               <Filter className="h-4 w-4" />
-              <span>Filter</span>
+              <span>{filteredFeed.length} shown</span>
             </button>
           </div>
         </div>
       </div>
+
+      {actionError ? (
+        <div className="mx-3.5 mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 sm:mx-5 lg:mx-6">
+          {actionError}
+        </div>
+      ) : null}
 
       <div className="min-h-0 flex-1 overflow-auto px-3.5 py-3.5 sm:px-5 lg:px-6 lg:py-5">
         <table className="w-full min-w-140 text-left lg:min-w-180">
@@ -70,10 +98,11 @@ export function ProductManagementSection({
               <th className="px-3.5 py-3 sm:px-5 lg:px-6 lg:py-4">Stock Level</th>
               <th className="px-3.5 py-3 sm:px-5 lg:px-6 lg:py-4">Expiration</th>
               <th className="px-3.5 py-3 sm:px-5 lg:px-6 lg:py-4">Status</th>
+              {canAdjust ? <th className="px-3.5 py-3 sm:px-5 lg:px-6 lg:py-4">Actions</th> : null}
             </tr>
           </thead>
           <tbody>
-            {productFeed.map((item, index) => (
+            {filteredFeed.map((item, index) => (
               <tr
                 key={`${item.sku}-${item.expiration}-${index}`}
                 className="border-t border-emerald-100 text-xs text-slate-700 transition hover:bg-emerald-50/70 sm:text-sm xl:text-base"
@@ -106,6 +135,28 @@ export function ProductManagementSection({
                     {item.status}
                   </span>
                 </td>
+                {canAdjust ? (
+                  <td className="px-3.5 py-4 sm:px-5 lg:px-6">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={pendingSku === item.sku || item.stockLevel <= 0}
+                        onClick={() => onAdjustStock(item.sku, Math.max(0, item.stockLevel - 1))}
+                        className="rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        -1
+                      </button>
+                      <button
+                        type="button"
+                        disabled={pendingSku === item.sku}
+                        onClick={() => onAdjustStock(item.sku, item.stockLevel + 1)}
+                        className="rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        +1
+                      </button>
+                    </div>
+                  </td>
+                ) : null}
               </tr>
             ))}
           </tbody>

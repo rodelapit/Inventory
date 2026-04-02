@@ -3,6 +3,7 @@ import { StaffSidebar } from "../../../components/dashboard/staff/StaffSidebar";
 import { StaffHeroSectionLive } from "../../../components/dashboard/staff/StaffHeroSectionLive";
 import { ProductManagementSectionLive } from "../../../components/dashboard/shared/ProductManagementSectionLive";
 import { getDashboardData } from "../../../lib/dashboard/get-dashboard-data";
+import { isSupabaseConfigured } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -17,6 +18,7 @@ export default async function StaffDashboardPage() {
   }
 
   const dashboardData = await getDashboardData();
+  const liveDataUnavailable = !isSupabaseConfigured();
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-(--bg) text-(--text)">
@@ -44,6 +46,11 @@ export default async function StaffDashboardPage() {
 
             <div className="px-4 py-6 sm:px-8 lg:px-10">
               <div className="mx-auto flex max-w-6xl flex-col gap-4 lg:gap-5">
+                {liveDataUnavailable ? (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    Live data unavailable. Supabase is not configured, so staff data may be empty.
+                  </div>
+                ) : null}
                 <StaffHeroSectionLive
                   systemStatusTitle={dashboardData.systemStatusTitle}
                   systemStatusMessage={dashboardData.systemStatusMessage}

@@ -140,3 +140,65 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unexpected error" }, { status: 500 });
   }
 }
+
+function normalizeStockStatus(stockLevel: number): "In Stock" | "Low" | "Critical" {
+  if (stockLevel <= 0) return "Critical";
+  if (stockLevel <= 10) return "Low";
+  return "In Stock";
+}
+
+export async function PATCH(req: Request) {
+  try {
+    if (!isSupabaseConfigured()) {
+      return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
+    }
+
+    const body = await req.json();
+    const sku = String(body.sku ?? "").trim();
+    const inputStock = Number(body.stockLevel);
+
+    if (!sku) {
+      return NextResponse.json({ error: "SKU is required" }, { status: 400 });
+    }
+
+    if (Number.isNaN(inputStock) || inputStock < 0) {
+      return NextResponse.json({ error: "stockLevel must be a non-negative number" }, { status: 400 });
+    }
+
+    const stockLevel = Math.floor(inputStock);
+    const status = normalizeStockStatus(stockLevel);
+
+    const supabase = createSupabaseAdminClient();
+    const { data, error } = await supabase
+      .from("products")
+      .update({
+        stock_level: stockLevel,
+        status,
+      })
+      .eq("sku", sku)
+      .select("sku, product_name, stock_level, expiration, status")
+      .single();
+
+    if (error) {
+      console.error("API /api/products patch error", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    try {
+      revalidatePath("/");
+      revalidatePath("/products");
+      revalidatePath("/inventory");
+      revalidatePath("/reports");
+      revalidatePath("/staff");
+      revalidatePath("/staff/products");
+      revalidatePath("/staff/inventory");
+    } catch (e) {
+      console.error("revalidatePath error (PATCH /api/products):", e);
+    }
+
+    return NextResponse.json({ data });
+  } catch (err) {
+    console.error("Unexpected error in PATCH /api/products", err);
+    return NextResponse.json({ error: "Unexpected error" }, { status: 500 });
+  }
+}

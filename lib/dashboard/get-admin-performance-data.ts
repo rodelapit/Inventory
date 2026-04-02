@@ -79,7 +79,7 @@ type ProfileCount = { count: number | null };
 const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const trafficColors = ["bg-blue-500", "bg-teal-500", "bg-sky-500", "bg-cyan-500", "bg-indigo-500"];
 
-const fallbackData: AdminPerformanceData = {
+const emptyPerformanceData: AdminPerformanceData = {
   monthlyPoints: monthLabels.map((month) => ({ month, revenue: 0, orders: 0, profit: 0 })),
   monthlyGoals: [
     { label: "Monthly Revenue", value: "$0", target: "$1,000", percent: 0, tone: "blue" },
@@ -182,7 +182,7 @@ function getLast12MonthLabels(): string[] {
 
 export async function getAdminPerformanceData(): Promise<AdminPerformanceData> {
   if (!isSupabaseConfigured()) {
-    return fallbackData;
+    return emptyPerformanceData;
   }
 
   const supabase = createSupabaseServerClient();
@@ -381,13 +381,16 @@ export async function getAdminPerformanceData(): Promise<AdminPerformanceData> {
     return {
       monthlyPoints,
       monthlyGoals,
-      trafficSources: trafficSources.length > 0 ? trafficSources : fallbackData.trafficSources,
+      trafficSources: trafficSources.length > 0 ? trafficSources : [{ source: "NO ZONE DATA", percent: 100, colorClass: "bg-slate-400" }],
       recentOrders,
-      recentActivity: recentActivity.length > 0 ? recentActivity : fallbackData.recentActivity,
+      recentActivity:
+        recentActivity.length > 0
+          ? recentActivity
+          : [{ actor: "System", action: "No recent activity yet.", time: "Live" }],
       overviewCards,
       totalVisits: new Intl.NumberFormat("en-US").format(totalUnits),
     };
   } catch {
-    return fallbackData;
+    return emptyPerformanceData;
   }
 }

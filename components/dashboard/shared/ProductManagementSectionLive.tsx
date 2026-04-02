@@ -25,7 +25,60 @@ export function ProductManagementSectionLive({
   initialProductFeed,
 }: ProductManagementSectionLiveProps) {
   const [productFeed, setProductFeed] = useState<ProductFeedItem[]>(initialProductFeed);
-  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [pendingSku, setPendingSku] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  async function handleAdjustStock(sku: string, nextStock: number) {
+    setPendingSku(sku);
+    setActionError(null);
+
+    try {
+      const res = await fetch("/api/products", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sku,
+          stockLevel: Math.max(0, nextStock),
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        setActionError(json?.error ?? "Failed to update stock level.");
+        return;
+      }
+
+      const updated = json?.data as {
+        sku?: string;
+        product_name?: string;
+        stock_level?: number | null;
+        expiration?: string | null;
+      } | null;
+
+      if (updated?.sku) {
+        setProductFeed((prev) =>
+          prev.map((item) =>
+            item.sku === updated.sku
+              ? {
+                  ...item,
+                  productName: updated.product_name ?? item.productName,
+                  stockLevel: updated.stock_level ?? 0,
+                  expiration: updated.expiration ? new Date(updated.expiration).toLocaleDateString() : item.expiration,
+                  status: getProductStatus(updated.stock_level),
+                }
+              : item,
+          ),
+        );
+      }
+    } catch (error) {
+      console.error("Failed to adjust stock", error);
+      setActionError("Failed to update stock level.");
+    } finally {
+      setPendingSku(null);
+    }
+  }
 
   useEffect(() => {
     try {
@@ -90,9 +143,7 @@ export function ProductManagementSectionLive({
             }
           }
         )
-        .subscribe((status) => {
-          setIsSubscribed(status === "SUBSCRIBED");
-        });
+        .subscribe();
 
       return () => {
         subscription.unsubscribe();
@@ -102,5 +153,12 @@ export function ProductManagementSectionLive({
     }
   }, []);
 
-  return <ProductManagementSection productFeed={productFeed} />;
+  return (
+    <ProductManagementSection
+      productFeed={productFeed}
+      onAdjustStock={handleAdjustStock}
+      pendingSku={pendingSku}
+      actionError={actionError}
+    />
+  );
 }

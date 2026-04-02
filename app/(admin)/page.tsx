@@ -3,9 +3,11 @@ import { ThemeProvider } from "../../components/ThemeProvider/ThemeProvider";
 import { Bell, CalendarDays, Search } from "lucide-react";
 import { PerformanceOverviewPanel } from "../../components/dashboard/admin/PerformanceOverviewPanel";
 import { getAdminPerformanceData } from "@/lib/dashboard/get-admin-performance-data";
+import { isSupabaseConfigured } from "@/lib/supabase/server";
 
 export default async function Home() {
   const performanceData = await getAdminPerformanceData();
+  const liveDataUnavailable = !isSupabaseConfigured();
   const notifications = performanceData.recentActivity;
   const notificationCount = notifications.length;
 
@@ -107,6 +109,11 @@ export default async function Home() {
           <ThemeProvider initial="dashboard">
             <div className="px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
               <div className="flex w-full flex-col gap-6 pb-10 lg:gap-7">
+                {liveDataUnavailable ? (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    Live data unavailable. Supabase is not configured, so dashboard data may be empty.
+                  </div>
+                ) : null}
                 <PerformanceOverviewPanel data={performanceData} />
               </div>
             </div>

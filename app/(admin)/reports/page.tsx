@@ -1,6 +1,6 @@
 import { AppSidebar } from "../../../components/dashboard/admin/AppSidebar";
 import { ThemeProvider } from "../../../components/ThemeProvider/ThemeProvider";
-import { mockDashboardData, type ProductFeedItem, type ZoneCard } from "@/data/dashboard";
+import type { ProductFeedItem, ZoneCard } from "@/data/dashboard";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { FileSpreadsheet, Download, Filter, CalendarDays, ArrowUpRight, ArrowDownRight } from "lucide-react";
 
@@ -9,8 +9,8 @@ export const dynamic = "force-dynamic";
 async function loadReportsData(): Promise<{ productFeed: ProductFeedItem[]; zoneCards: ZoneCard[] }> {
   if (!isSupabaseConfigured()) {
     return {
-      productFeed: mockDashboardData.productFeed,
-      zoneCards: mockDashboardData.zoneCards,
+      productFeed: [],
+      zoneCards: [],
     };
   }
 
@@ -24,8 +24,8 @@ async function loadReportsData(): Promise<{ productFeed: ProductFeedItem[]; zone
     if (productError) {
       console.error("Error loading products for reports", productError);
       return {
-        productFeed: mockDashboardData.productFeed,
-        zoneCards: mockDashboardData.zoneCards,
+        productFeed: [],
+        zoneCards: [],
       };
     }
 
@@ -59,7 +59,7 @@ async function loadReportsData(): Promise<{ productFeed: ProductFeedItem[]; zone
     let zoneCards: ZoneCard[];
     if (zoneError) {
       console.error("Error loading zones for reports", zoneError);
-      zoneCards = mockDashboardData.zoneCards;
+      zoneCards = [];
     } else {
       type ZoneRow = {
         id?: string | number | null;
@@ -82,13 +82,14 @@ async function loadReportsData(): Promise<{ productFeed: ProductFeedItem[]; zone
   } catch (err) {
     console.error("Unexpected error loading reports data", err);
     return {
-      productFeed: mockDashboardData.productFeed,
-      zoneCards: mockDashboardData.zoneCards,
+      productFeed: [],
+      zoneCards: [],
     };
   }
 }
 
 export default async function ReportsPage() {
+  const liveDataUnavailable = !isSupabaseConfigured();
   const { productFeed, zoneCards } = await loadReportsData();
 
   const totalProducts = productFeed.length;
@@ -154,6 +155,11 @@ export default async function ReportsPage() {
 
             <div className="px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
               <div className="space-y-6">
+                {liveDataUnavailable ? (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    Live data unavailable. Supabase is not configured, so reports may appear empty.
+                  </div>
+                ) : null}
                 {/* KPI cards */}
                 <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                   <div className="rounded-3xl border border-slate-900/8 bg-white/90 p-4 shadow-[0_18px_40px_rgba(148,163,184,0.18)]">

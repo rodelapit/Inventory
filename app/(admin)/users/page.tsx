@@ -8,7 +8,7 @@ import { createStaffAccount } from "./user-management-actions";
 type User = {
   id: string;
   name: string;
-  email: string;
+    email: string;
   role: "Owner" | "Manager" | "Staff";
   status: "Active" | "Invited" | "Disabled";
   lastSeen: string;
@@ -36,6 +36,7 @@ type UsersPageProps = {
 
 export default async function UsersPage({ searchParams }: UsersPageProps) {
   const params = await searchParams;
+  const supabaseConfigured = isSupabaseConfigured();
   let users: User[] = [];
   let loadError: string | null = null;
 
@@ -46,7 +47,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
     role?: string | null;
   };
 
-  if (isSupabaseConfigured()) {
+  if (supabaseConfigured) {
     try {
       const supabase = createSupabaseAdminClient();
 
@@ -184,6 +185,11 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
 
             <div className="px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
               <div className="space-y-6">
+                {!supabaseConfigured ? (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    Live data unavailable. Supabase is not configured, so users cannot be loaded.
+                  </div>
+                ) : null}
                 {/* Create staff account */}
                 <section className="rounded-3xl border border-slate-900/8 bg-white/95 p-4 sm:p-5 shadow-[0_22px_55px_rgba(148,163,184,0.2)]">
                   <div className="mb-4 flex items-center justify-between gap-3">

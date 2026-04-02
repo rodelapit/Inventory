@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { BarChart3, ChevronRight, Home, Package, ShieldCheck, Users } from "lucide-react";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const navItems = [
   { label: "Dashboard", href: "/", icon: Home },
@@ -33,21 +34,55 @@ export function AppSidebar() {
     return () => window.clearTimeout(timeoutId);
   }, [router]);
 
+  useEffect(() => {
+    try {
+      const supabase = createSupabaseBrowserClient();
+      let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+      const scheduleRefresh = () => {
+        if (refreshTimer) {
+          clearTimeout(refreshTimer);
+        }
+
+        refreshTimer = setTimeout(() => {
+          router.refresh();
+        }, 350);
+      };
+
+      const channel = supabase
+        .channel("admin-global-realtime")
+        .on("postgres_changes", { event: "*", schema: "public", table: "products" }, scheduleRefresh)
+        .on("postgres_changes", { event: "*", schema: "public", table: "zones" }, scheduleRefresh)
+        .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, scheduleRefresh)
+        .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, scheduleRefresh)
+        .subscribe();
+
+      return () => {
+        if (refreshTimer) {
+          clearTimeout(refreshTimer);
+        }
+        channel.unsubscribe();
+      };
+    } catch {
+      return;
+    }
+  }, [router]);
+
   const prefetchRoute = (href: string) => {
     router.prefetch(href);
   };
 
   return (
-    <aside className="relative border-b border-slate-900/8 bg-[rgba(255,255,255,0.76)] text-slate-900 backdrop-blur-2xl lg:h-screen lg:border-r lg:border-b-0">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.14),transparent_34%),radial-gradient(circle_at_bottom,rgba(59,130,246,0.12),transparent_30%)]" />
+    <aside className="relative border-b border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(245,248,252,0.82))] text-slate-900 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur-2xl lg:h-screen lg:border-r lg:border-b-0 lg:shadow-[0_28px_80px_rgba(15,23,42,0.1)]">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.12),transparent_30%),radial-gradient(circle_at_bottom,rgba(59,130,246,0.1),transparent_30%)]" />
 
-      <div className="relative border-b border-slate-900/8 px-4 py-4 sm:px-5 lg:hidden">
+      <div className="relative border-b border-slate-900/5 px-4 py-4 sm:px-5 lg:hidden">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-lg font-extrabold tracking-[0.18em] text-slate-950">SMARTSTOCK</p>
-            <p className="mt-1 text-xs uppercase tracking-[0.24em] text-slate-500">Operations hub</p>
+            <p className="text-lg font-extrabold tracking-[0.22em] text-slate-950">SMARTSTOCK</p>
+            <p className="mt-1 text-xs uppercase tracking-[0.28em] text-slate-500">Operations hub</p>
           </div>
-          <div className="rounded-full border border-slate-900/8 bg-white/80 px-3 py-1.5 text-right shadow-[0_18px_40px_rgba(148,163,184,0.16)]">
+          <div className="rounded-full border border-sky-100 bg-white/90 px-3 py-1.5 text-right shadow-[0_18px_40px_rgba(148,163,184,0.14)]">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700/80">
               Network
             </p>
@@ -66,8 +101,8 @@ export function AppSidebar() {
                 onFocus={() => prefetchRoute(item.href)}
                 className={`rounded-2xl border px-3 py-2.5 text-sm font-semibold transition ${
                   active
-                    ? "border-emerald-500/18 bg-emerald-500/10 text-slate-950 shadow-[0_18px_34px_rgba(16,185,129,0.12)]"
-                    : "border-slate-900/8 bg-white/60 text-slate-600 hover:bg-white"
+                    ? "border-emerald-500/20 bg-white text-slate-950 shadow-[0_18px_34px_rgba(16,185,129,0.12)]"
+                    : "border-slate-900/6 bg-white/70 text-slate-600 hover:border-slate-900/10 hover:bg-white"
                 }`}
               >
                 {item.label}
@@ -78,12 +113,12 @@ export function AppSidebar() {
       </div>
 
       <div className="relative hidden h-full flex-col overflow-x-hidden overflow-y-auto lg:flex">
-        <div className="border-b border-slate-900/8 px-5 py-6">
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/14 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-800">
+        <div className="border-b border-slate-900/5 px-5 py-6">
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/15 bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-700 shadow-[0_8px_20px_rgba(16,185,129,0.1)]">
             <ShieldCheck className="h-3.5 w-3.5" />
             Live workspace
           </div>
-          <p className="mt-4 text-2xl font-extrabold tracking-[0.2em] text-slate-950">SMARTSTOCK</p>
+          <p className="mt-4 text-2xl font-extrabold tracking-[0.22em] text-slate-950">SMARTSTOCK</p>
           <p className="mt-2 max-w-[16rem] text-sm leading-6 text-slate-600">
             Real-time inventory, stock movement, and team activity in one place.
           </p>
@@ -105,16 +140,16 @@ export function AppSidebar() {
                   onFocus={() => prefetchRoute(item.href)}
                   className={`group flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition ${
                     active
-                      ? "border-emerald-500/18 bg-white text-slate-950 shadow-[0_22px_40px_rgba(148,163,184,0.2)]"
-                      : "border-slate-900/8 bg-[rgba(255,255,255,0.55)] text-slate-600 hover:border-slate-900/12 hover:bg-white"
+                      ? "border-emerald-500/20 bg-white text-slate-950 shadow-[0_18px_42px_rgba(15,23,42,0.12)]"
+                      : "border-slate-900/6 bg-white/70 text-slate-600 hover:border-slate-900/10 hover:bg-white"
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <span
                       className={`flex h-10 w-10 items-center justify-center rounded-xl border transition ${
                         active
-                          ? "border-emerald-500/18 bg-emerald-500/10 text-emerald-700"
-                          : "border-slate-900/8 bg-white/70 text-slate-500 group-hover:text-slate-950"
+                          ? "border-emerald-500/20 bg-emerald-50 text-emerald-700"
+                            : "border-slate-900/6 bg-slate-50 text-slate-500 group-hover:text-slate-950"
                       }`}
                     >
                       <Icon className="h-4 w-4" />
@@ -129,7 +164,7 @@ export function AppSidebar() {
         </div>
 
         <div className="mt-auto p-5">
-          <div className="overflow-hidden rounded-[30px] border border-slate-900/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(240,249,255,0.8))] p-5 shadow-[0_24px_60px_rgba(148,163,184,0.2)]">
+          <div className="overflow-hidden rounded-[28px] border border-slate-900/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(240,249,255,0.82))] p-5 shadow-[0_24px_60px_rgba(148,163,184,0.16)]">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
               Warehouse health
             </p>

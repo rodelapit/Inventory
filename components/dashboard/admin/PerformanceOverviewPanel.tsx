@@ -74,33 +74,33 @@ export function PerformanceOverviewPanel({ data }: PerformanceOverviewPanelProps
           return (
             <article
               key={card.title}
-              className="rounded-3xl border border-slate-900/8 bg-[rgba(255,255,255,0.82)] p-5 shadow-[0_18px_44px_rgba(148,163,184,0.14)]"
+              className="rounded-[28px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(248,250,252,0.8))] p-5 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur-xl"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-base font-medium text-slate-600">{card.title}</p>
-                  <p className="mt-3 text-3xl font-bold tracking-[-0.03em] text-slate-950">{card.value}</p>
-                  <p className={`mt-4 text-sm font-semibold ${card.trendClass}`}>{card.trendText}</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{card.title}</p>
+                  <p className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-slate-950">{card.value}</p>
+                  <p className={`mt-3 text-sm font-medium ${card.trendClass}`}>{card.trendText}</p>
                 </div>
-                <span className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl ${card.iconClass}`}>
+                <span className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/60 shadow-[0_10px_24px_rgba(15,23,42,0.08)] ${card.iconClass}`}>
                   <Icon className="h-6 w-6" />
                 </span>
               </div>
 
-              <div className="mt-5 h-12 rounded-2xl bg-linear-to-r from-slate-100/80 to-slate-200/50" />
+              <div className="mt-5 h-12 rounded-2xl bg-[linear-gradient(90deg,rgba(241,245,249,0.3),rgba(226,232,240,0.9),rgba(241,245,249,0.35))]" />
             </article>
           );
         })}
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <article className="rounded-4xl border border-slate-900/8 bg-[rgba(255,255,255,0.82)] p-5 shadow-[0_24px_60px_rgba(148,163,184,0.16)] sm:p-6 lg:p-7">
+        <article className="rounded-4xl border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(248,250,252,0.8))] p-5 shadow-[0_24px_60px_rgba(15,23,42,0.08)] sm:p-6 lg:p-7 backdrop-blur-xl">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-2xl font-semibold tracking-[-0.03em] text-slate-950">Overview</h2>
               <p className="text-sm text-slate-500">Monthly order and revenue performance</p>
             </div>
-            <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+            <div className="inline-flex rounded-full border border-slate-200 bg-white p-1 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
               {(Object.keys(metricLabels) as MetricKey[]).map((key) => (
                 <button
                   key={key}
@@ -108,7 +108,7 @@ export function PerformanceOverviewPanel({ data }: PerformanceOverviewPanelProps
                   onClick={() => setActiveMetric(key)}
                   className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
                     activeMetric === key
-                      ? "bg-white text-slate-950 shadow-[0_6px_14px_rgba(15,23,42,0.08)]"
+                        ? "bg-slate-950 text-white shadow-[0_10px_24px_rgba(15,23,42,0.14)]"
                       : "text-slate-500 hover:text-slate-800"
                   }`}
                 >
@@ -118,7 +118,7 @@ export function PerformanceOverviewPanel({ data }: PerformanceOverviewPanelProps
             </div>
           </div>
 
-          <div className="mt-6">
+          <div className="mt-6 rounded-[28px] border border-slate-200/70 bg-white/70 p-3 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
             <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-70 w-full" role="img" aria-label={`${metricLabels[activeMetric]} trend by month`}>
               <defs>
                 <linearGradient id="overviewAreaGradient" x1="0" y1="0" x2="0" y2="1">
@@ -149,7 +149,7 @@ export function PerformanceOverviewPanel({ data }: PerformanceOverviewPanelProps
               {metricSeries.map((value, index) => {
                 const x = Math.round(index * stepX);
                 const y = Math.round(topPadding + innerHeight - (value / Math.max(maxValue, 1)) * innerHeight);
-                return <circle key={`${data.monthlyPoints[index].month}-${value}`} cx={x} cy={y} r="3" fill="#0284c7" />;
+                return <circle key={`${data.monthlyPoints[index].month}-${value}`} cx={x} cy={y} r="3.5" fill="#0284c7" />;
               })}
             </svg>
           </div>
@@ -162,13 +162,13 @@ export function PerformanceOverviewPanel({ data }: PerformanceOverviewPanelProps
         </article>
 
         <aside className="grid gap-5">
-          <article className="rounded-4xl border border-slate-900/8 bg-[rgba(255,255,255,0.82)] p-5 shadow-[0_24px_60px_rgba(148,163,184,0.16)] sm:p-6">
+          <article className="rounded-4xl border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(248,250,252,0.8))] p-5 shadow-[0_24px_60px_rgba(15,23,42,0.08)] sm:p-6 backdrop-blur-xl">
             <h3 className="text-2xl font-semibold tracking-[-0.03em] text-slate-950">Inventory Distribution</h3>
             <p className="mt-1 text-sm text-slate-500">Stock share by storage zone</p>
 
             <div className="mt-5 flex items-center gap-5">
-              <div className="relative flex h-40 w-40 items-center justify-center rounded-full" style={{ background: donutGradient }}>
-                <div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-white text-center">
+              <div className="relative flex h-40 w-40 items-center justify-center rounded-full shadow-[0_18px_40px_rgba(15,23,42,0.08)]" style={{ background: donutGradient }}>
+                <div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-white text-center shadow-[0_10px_24px_rgba(15,23,42,0.08)]">
                   <span className="text-3xl font-bold text-slate-950">{totalVisits}</span>
                   <span className="text-xs text-slate-500">Units</span>
                 </div>
@@ -188,7 +188,7 @@ export function PerformanceOverviewPanel({ data }: PerformanceOverviewPanelProps
             </div>
           </article>
 
-          <article className="rounded-4xl border border-slate-900/8 bg-[rgba(255,255,255,0.82)] p-5 shadow-[0_24px_60px_rgba(148,163,184,0.16)] sm:p-6">
+          <article className="rounded-4xl border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(248,250,252,0.8))] p-5 shadow-[0_24px_60px_rgba(15,23,42,0.08)] sm:p-6 backdrop-blur-xl">
             <h3 className="text-2xl font-semibold tracking-[-0.03em] text-slate-950">Monthly Goals</h3>
             <p className="mt-1 text-sm text-slate-500">Live progress based on current system data</p>
 

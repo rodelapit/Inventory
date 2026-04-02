@@ -17,57 +17,9 @@ type ProductRow = {
   storageZone?: string | null;
 };
 
-const fallbackProducts: ProductRow[] = [
-  {
-    sku: "PRD-1081",
-    name: "Coca-Cola",
-    category: "Beverages",
-    quantity: 184,
-    status: "In Stock",
-    price: 1.99,
-    supplier: "Coca-Cola Company",
-  },
-  {
-    sku: "PRD-1043",
-    name: "Instant Noodles Pack",
-    category: "Dry Goods",
-    quantity: 62,
-    status: "Low",
-    price: 0.99,
-    supplier: "Asian Foods Inc",
-  },
-  {
-    sku: "PRD-1180",
-    name: "Whole Milk",
-    category: "Dairy",
-    quantity: 28,
-    status: "Critical",
-    price: 3.49,
-    supplier: "Fresh Dairy Co",
-  },
-  {
-    sku: "PRD-1205",
-    name: "Orange Juice",
-    category: "Beverages",
-    quantity: 145,
-    status: "In Stock",
-    price: 4.99,
-    supplier: "Tropicana Foods",
-  },
-  {
-    sku: "PRD-1312",
-    name: "Greek Yogurt",
-    category: "Dairy",
-    quantity: 89,
-    status: "In Stock",
-    price: 2.49,
-    supplier: "Chobani LLC",
-  },
-];
-
 async function getProducts(): Promise<ProductRow[]> {
   if (!isSupabaseConfigured()) {
-    return fallbackProducts;
+    return [];
   }
 
   const supabase = createSupabaseServerClient();
@@ -115,6 +67,7 @@ async function getProducts(): Promise<ProductRow[]> {
 }
 
 export default async function ProductsPage() {
+  const liveDataUnavailable = !isSupabaseConfigured();
   const productRows = await getProducts();
   const totalProducts = productRows.length;
   const lowStockCount = productRows.filter((p) => p.status === "Low" || p.status === "Critical").length;
@@ -145,6 +98,11 @@ export default async function ProductsPage() {
 
             <div className="px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
               <div className="space-y-5">
+                {liveDataUnavailable ? (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    Live data unavailable. Supabase is not configured, so products cannot be loaded.
+                  </div>
+                ) : null}
                 <div className="grid gap-4 md:grid-cols-4">
                   <div className="rounded-3xl border border-slate-900/8 bg-white/90 p-4 shadow-[0_18px_40px_rgba(148,163,184,0.18)]">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -185,4 +143,3 @@ export default async function ProductsPage() {
     </div>
   );
 }
-570698-52

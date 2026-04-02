@@ -27,7 +27,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${manrope.variable} ${plexMono.variable} antialiased`}
+        className={`${manrope.variable} ${plexMono.variable} min-h-screen bg-background text-foreground antialiased`}
       >
         {children}
       </body>
