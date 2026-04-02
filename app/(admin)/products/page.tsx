@@ -121,16 +121,16 @@ export default async function ProductsPage() {
   const categoriesCount = new Set(productRows.map((p) => p.category).filter(Boolean)).size;
   const totalValue = productRows.reduce((sum, p) => sum + p.quantity * p.price, 0);
   return (
-    <div className="min-h-screen overflow-x-hidden">
+    <div className="min-h-screen overflow-x-hidden bg-[#eef2f7]">
       <div className="grid min-h-screen lg:grid-cols-[292px_minmax(0,1fr)]">
         <AppSidebar />
 
         <main className="flex min-w-0 flex-col">
           <ThemeProvider initial="dashboard">
-            <header className="border-b border-slate-900/8 bg-[rgba(244,239,230,0.9)] px-4 py-5 backdrop-blur-xl sm:px-6 lg:px-8">
-              <div className="mx-auto flex max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <header className="border-b border-slate-900/8 bg-[rgba(239,244,251,0.9)] px-4 py-5 backdrop-blur-xl sm:px-6 lg:px-8">
+              <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-700/80">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-700/85">
                     Products
                   </p>
                   <h1 className="mt-2 text-2xl font-bold tracking-[-0.03em] text-slate-950 sm:text-3xl">
@@ -144,7 +144,7 @@ export default async function ProductsPage() {
             </header>
 
             <div className="px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
-              <div className="mx-auto max-w-7xl space-y-5">
+              <div className="space-y-5">
                 <div className="grid gap-4 md:grid-cols-4">
                   <div className="rounded-3xl border border-slate-900/8 bg-white/90 p-4 shadow-[0_18px_40px_rgba(148,163,184,0.18)]">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">

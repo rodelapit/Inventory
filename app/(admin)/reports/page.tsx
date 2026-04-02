@@ -112,16 +112,16 @@ export default async function ReportsPage() {
   const topExpiryRisk = expirySorted.slice(0, 4);
 
   return (
-    <div className="min-h-screen overflow-x-hidden">
+    <div className="min-h-screen overflow-x-hidden bg-[#eef2f7]">
       <div className="grid min-h-screen lg:grid-cols-[292px_minmax(0,1fr)]">
         <AppSidebar />
 
         <main className="flex min-w-0 flex-col">
           <ThemeProvider initial="dashboard">
-            <header className="border-b border-slate-900/8 bg-[rgba(244,239,230,0.9)] px-4 py-5 backdrop-blur-xl sm:px-6 lg:px-8">
-              <div className="mx-auto flex max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <header className="border-b border-slate-900/8 bg-[rgba(239,244,251,0.9)] px-4 py-5 backdrop-blur-xl sm:px-6 lg:px-8">
+              <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-700/80">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-700/85">
                     Reports
                   </p>
                   <h1 className="mt-2 text-2xl font-bold tracking-[-0.03em] text-slate-950 sm:text-3xl">
@@ -134,23 +134,26 @@ export default async function ReportsPage() {
 
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   <button className="flex items-center gap-2 rounded-full border border-slate-900/8 bg-white/80 px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-[0_12px_30px_rgba(148,163,184,0.22)] sm:px-4 sm:text-sm">
-                    <CalendarDays className="h-4 w-4 text-emerald-700" />
+                    <CalendarDays className="h-4 w-4 text-sky-700" />
                     Last 30 days
                   </button>
                   <button className="flex items-center gap-2 rounded-full border border-slate-900/8 bg-white/80 px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-[0_12px_30px_rgba(148,163,184,0.18)] sm:px-4 sm:text-sm">
                     <Filter className="h-4 w-4 text-slate-700" />
                     Filters
                   </button>
-                  <button className="flex items-center gap-2 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-[0_18px_40px_rgba(16,185,129,0.65)] hover:bg-emerald-700 sm:px-4 sm:text-sm">
+                  <a
+                    href="/api/reports/export"
+                    className="flex items-center gap-2 rounded-full bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white shadow-[0_18px_40px_rgba(14,165,233,0.5)] hover:bg-sky-700 sm:px-4 sm:text-sm"
+                  >
                     <Download className="h-4 w-4" />
                     Export CSV
-                  </button>
+                  </a>
                 </div>
               </div>
             </header>
 
             <div className="px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
-              <div className="mx-auto max-w-7xl space-y-6">
+              <div className="space-y-6">
                 {/* KPI cards */}
                 <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                   <div className="rounded-3xl border border-slate-900/8 bg-white/90 p-4 shadow-[0_18px_40px_rgba(148,163,184,0.18)]">
@@ -277,10 +280,13 @@ export default async function ReportsPage() {
                         Detailed snapshot of current inventory status per product.
                       </p>
                     </div>
-                    <button className="hidden items-center gap-2 rounded-full border border-slate-600/70 bg-[#050b26] px-3 py-1.5 text-xs font-semibold text-slate-100 hover:bg-slate-900/60 sm:inline-flex">
+                    <a
+                      href="/api/reports/export"
+                      className="hidden items-center gap-2 rounded-full border border-slate-600/70 bg-[#050b26] px-3 py-1.5 text-xs font-semibold text-slate-100 hover:bg-slate-900/60 sm:inline-flex"
+                    >
                       <Download className="h-4 w-4" />
                       Export table
-                    </button>
+                    </a>
                   </div>
 
                   <div className="overflow-x-auto">

@@ -35,28 +35,51 @@ export async function createStaffAccount(formData: FormData) {
     });
 
     if (error || !data?.user) {
+      console.error("[users:create] auth.admin.createUser failed", error);
       const message = String(error?.message ?? "").toLowerCase();
       if (message.includes("already") || message.includes("exists")) {
         redirect("/users?error=email-exists");
       }
+      if (message.includes("service_role") || message.includes("not authorized") || message.includes("forbidden")) {
+        redirect("/users?error=service-role-missing");
+      }
       redirect("/users?error=create-failed");
     }
 
-    await adminClient.from("profiles").upsert(
-      {
-        user_id: data.user.id,
-        full_name: fullName,
-        email,
-        role: "staff",
-      },
-      {
-        onConflict: "user_id",
-      },
-    );
+    const profilePayload = {
+      user_id: data.user.id,
+      full_name: fullName,
+      email,
+      role: "staff",
+    };
+
+    const { error: profileUpsertError } = await adminClient.from("profiles").upsert(profilePayload, {
+      onConflict: "user_id",
+    });
+
+    if (profileUpsertError) {
+      console.error("[users:create] profiles upsert failed", profileUpsertError);
+      const profileMessage = String(profileUpsertError.message ?? "").toLowerCase();
+
+      if (profileMessage.includes("no unique or exclusion constraint") || profileMessage.includes("on conflict")) {
+        const { error: profileInsertError } = await adminClient.from("profiles").insert(profilePayload);
+        if (profileInsertError) {
+          console.error("[users:create] profiles insert fallback failed", profileInsertError);
+          redirect("/users?error=profile-sync-failed");
+        }
+      } else {
+        redirect("/users?error=profile-sync-failed");
+      }
+    }
 
     revalidatePath("/users");
     redirect("/users?created=1");
-  } catch {
+  } catch (err) {
+    console.error("[users:create] unexpected failure", err);
+    const message = String((err as { message?: string } | null)?.message ?? "").toLowerCase();
+    if (message.includes("service_role") || message.includes("missing")) {
+      redirect("/users?error=service-role-missing");
+    }
     redirect("/users?error=create-failed");
   }
 }

@@ -141,7 +141,7 @@ export default async function InventoryPage() {
   const avgUtilization = Math.round((totalCurrent / Math.max(1, totalCapacity)) * 100);
 
   return (
-    <div className="min-h-screen overflow-x-hidden">
+    <div className="min-h-screen overflow-x-hidden bg-[#eef2f7]">
       <div className="grid min-h-screen lg:grid-cols-[292px_minmax(0,1fr)]">
         <AppSidebar />
 
@@ -151,7 +151,7 @@ export default async function InventoryPage() {
             description="Monitor storage capacity, conditions, and utilization across all zones."
             actions={
               <button className="flex items-center gap-2 rounded-full border border-slate-900/8 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-800 shadow-[0_12px_30px_rgba(148,163,184,0.22)] hover:bg-white">
-                <Filter className="h-4 w-4 text-emerald-700" />
+                <Filter className="h-4 w-4 text-sky-700" />
                 Filters
               </button>
             }

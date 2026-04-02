@@ -53,7 +53,7 @@ export function AppSidebar() {
         </nav>
       </div>
 
-      <div className="relative hidden h-full flex-col overflow-hidden lg:flex">
+      <div className="relative hidden h-full flex-col overflow-x-hidden overflow-y-auto lg:flex">
         <div className="border-b border-slate-900/8 px-5 py-6">
           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/14 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-800">
             <ShieldCheck className="h-3.5 w-3.5" />

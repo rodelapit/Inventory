@@ -143,19 +143,22 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
     "email-exists": "An account with this email already exists.",
     "create-failed": "Could not create the staff account. Please try again.",
     "supabase-not-configured": "Supabase is not configured for account creation.",
+    "service-role-missing": "SUPABASE_SERVICE_ROLE_KEY is missing or invalid. Add the service role key in your environment variables.",
+    "profile-sync-failed": "Auth user was created, but writing to profiles failed. Check profiles columns and constraints.",
+    "profile-userid-not-unique": "profiles.user_id must be UNIQUE for account sync. Add a unique constraint on user_id in Supabase.",
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-white text-slate-900">
+    <div className="min-h-screen overflow-x-hidden bg-[#eef2f7] text-slate-900">
       <div className="grid min-h-screen lg:grid-cols-[292px_minmax(0,1fr)]">
         <AppSidebar />
 
         <main className="flex min-w-0 flex-col">
           <ThemeProvider initial="dashboard">
-            <header className="border-b border-slate-900/8 bg-[rgba(244,239,230,0.9)] px-4 py-5 backdrop-blur-xl sm:px-6 lg:px-8">
-              <div className="mx-auto flex max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <header className="border-b border-slate-900/8 bg-[rgba(239,244,251,0.9)] px-4 py-5 backdrop-blur-xl sm:px-6 lg:px-8">
+              <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-700/80">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-700/85">
                     Users
                   </p>
                   <h1 className="mt-2 text-2xl font-bold tracking-[-0.03em] text-slate-950 sm:text-3xl">
@@ -171,7 +174,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                     <Filter className="h-4 w-4 text-slate-700" />
                     Filters
                   </button>
-                  <button className="flex items-center gap-2 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-[0_18px_40px_rgba(16,185,129,0.65)] hover:bg-emerald-700 sm:px-4 sm:text-sm">
+                  <button className="flex items-center gap-2 rounded-full bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white shadow-[0_18px_40px_rgba(14,165,233,0.5)] hover:bg-sky-700 sm:px-4 sm:text-sm">
                     <UserPlus className="h-4 w-4" />
                     Invite user
                   </button>
@@ -180,7 +183,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
             </header>
 
             <div className="px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
-              <div className="mx-auto max-w-7xl space-y-6">
+              <div className="space-y-6">
                 {/* Create staff account */}
                 <section className="rounded-3xl border border-slate-900/8 bg-white/95 p-4 sm:p-5 shadow-[0_22px_55px_rgba(148,163,184,0.2)]">
                   <div className="mb-4 flex items-center justify-between gap-3">
@@ -218,7 +221,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                         type="text"
                         required
                         placeholder="Juan Dela Cruz"
-                        className="mt-1 w-full rounded-2xl border border-slate-900/10 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-emerald-500"
+                        className="mt-1 w-full rounded-2xl border border-slate-900/10 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-sky-500"
                       />
                     </label>
 
@@ -229,7 +232,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                         type="email"
                         required
                         placeholder="staff@store.com"
-                        className="mt-1 w-full rounded-2xl border border-slate-900/10 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-emerald-500"
+                        className="mt-1 w-full rounded-2xl border border-slate-900/10 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-sky-500"
                       />
                     </label>
 
@@ -241,13 +244,13 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                         required
                         minLength={8}
                         placeholder="At least 8 characters"
-                        className="mt-1 w-full rounded-2xl border border-slate-900/10 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-emerald-500"
+                        className="mt-1 w-full rounded-2xl border border-slate-900/10 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-sky-500"
                       />
                     </label>
 
                     <button
                       type="submit"
-                      className="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(16,185,129,0.45)] hover:bg-emerald-700"
+                      className="inline-flex items-center justify-center gap-2 rounded-full bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(14,165,233,0.42)] hover:bg-sky-700"
                     >
                       <UserPlus className="h-4 w-4" />
                       Create staff

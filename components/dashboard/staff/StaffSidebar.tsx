@@ -46,7 +46,7 @@ export function StaffSidebar() {
         </nav>
       </div>
 
-      <div className="hidden h-full flex-col overflow-hidden lg:flex">
+      <div className="hidden h-full flex-col overflow-x-hidden overflow-y-auto lg:flex">
         <div className="border-b border-emerald-900/70 px-4 py-3.5 sm:px-5 sm:py-4">
           <p className="text-xl font-bold text-emerald-400 sm:text-2xl">SmartStock</p>
           <p className="text-xs text-emerald-200/80 sm:text-sm">Staff Workspace</p>
