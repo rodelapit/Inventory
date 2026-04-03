@@ -61,7 +61,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    const sku = String(body.sku ?? "").trim();
+    let sku = String(body.sku ?? "").trim();
     const name = String(body.name ?? "").trim();
     const category = String(body.category ?? "").trim() || null;
     const stock_level = Number.isNaN(Number(body.quantity)) ? 0 : Number(body.quantity);
@@ -71,12 +71,32 @@ export async function POST(req: Request) {
     const expiration = body.expiration ? new Date(body.expiration).toISOString() : null;
     const storage_zone = String(body.storage_zone ?? "").trim() || null;
 
-    if (!sku || !name) {
-      return NextResponse.json({ error: "SKU and name required" }, { status: 400 });
+    if (!name) {
+      return NextResponse.json({ error: "Product name required" }, { status: 400 });
     }
 
     if (!isSupabaseConfigured()) {
       return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
+    }
+
+    // Auto-generate SKU if not provided
+    if (!sku) {
+      const supabaseCheck = createSupabaseAdminClient();
+      const { data: allProducts } = await supabaseCheck
+        .from("products")
+        .select("sku")
+        .order("sku", { ascending: false })
+        .limit(1);
+
+      let nextNumber = 1;
+      if (allProducts && allProducts.length > 0) {
+        const lastSku = allProducts[0].sku;
+        const match = lastSku.match(/(\d+)/);
+        if (match) {
+          nextNumber = parseInt(match[1], 10) + 1;
+        }
+      }
+      sku = `PROD${String(nextNumber).padStart(3, "0")}`;
     }
 
     const supabase = createSupabaseAdminClient();

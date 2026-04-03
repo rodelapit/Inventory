@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { BarChart3, ChevronRight, Home, Package, ShieldCheck, Users } from "lucide-react";
+import { BarChart3, ChevronRight, Home, Package, ReceiptText, ShieldCheck, Users } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const navItems = [
   { label: "Dashboard", href: "/", icon: Home },
   { label: "Inventory", href: "/inventory", icon: Package },
   { label: "Products", href: "/products", icon: Package },
+  { label: "POS", href: "/pos", icon: ReceiptText },
   { label: "Reports", href: "/reports", icon: BarChart3 },
   { label: "Users", href: "/users", icon: Users },
 ];
@@ -30,8 +31,8 @@ export function AppSidebar() {
       return () => window.cancelIdleCallback(id);
     }
 
-    const timeoutId = window.setTimeout(prefetchAll, 200);
-    return () => window.clearTimeout(timeoutId);
+    const timeoutId = setTimeout(prefetchAll, 200);
+    return () => clearTimeout(timeoutId);
   }, [router]);
 
   useEffect(() => {

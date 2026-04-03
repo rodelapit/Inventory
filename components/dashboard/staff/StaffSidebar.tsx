@@ -28,8 +28,8 @@ export function StaffSidebar() {
       return () => window.cancelIdleCallback(id);
     }
 
-    const timeoutId = window.setTimeout(prefetchAll, 200);
-    return () => window.clearTimeout(timeoutId);
+    const timeoutId = setTimeout(prefetchAll, 200);
+    return () => clearTimeout(timeoutId);
   }, [router]);
 
   useEffect(() => {

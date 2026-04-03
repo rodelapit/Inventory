@@ -24,15 +24,14 @@ type PerformanceOverviewPanelProps = {
 export function PerformanceOverviewPanel({ data }: PerformanceOverviewPanelProps) {
   const [activeMetric, setActiveMetric] = useState<MetricKey>("revenue");
 
-  const maxValue = useMemo(
-    () => Math.max(...data.monthlyPoints.map((point) => point[activeMetric]), 1),
-    [activeMetric, data.monthlyPoints],
-  );
-
   const metricSeries = useMemo(
     () => data.monthlyPoints.map((point) => point[activeMetric]),
     [activeMetric, data.monthlyPoints],
   );
+
+  const hasTrendData = metricSeries.some((value) => value > 0);
+  const maxValue = useMemo(() => Math.max(...metricSeries, 1), [metricSeries]);
+  const chartScale = hasTrendData ? maxValue : 1;
 
   const chartWidth = 640;
   const chartHeight = 300;
@@ -44,7 +43,7 @@ export function PerformanceOverviewPanel({ data }: PerformanceOverviewPanelProps
   const linePoints = metricSeries
     .map((value, index) => {
       const x = Math.round(index * stepX);
-      const y = Math.round(topPadding + innerHeight - (value / Math.max(maxValue, 1)) * innerHeight);
+      const y = Math.round(topPadding + innerHeight - (value / chartScale) * innerHeight);
       return `${x},${y}`;
     })
     .join(" ");
@@ -119,39 +118,52 @@ export function PerformanceOverviewPanel({ data }: PerformanceOverviewPanelProps
           </div>
 
           <div className="mt-6 rounded-[28px] border border-slate-200/70 bg-white/70 p-3 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
-            <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-70 w-full" role="img" aria-label={`${metricLabels[activeMetric]} trend by month`}>
-              <defs>
-                <linearGradient id="overviewAreaGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.26" />
-                  <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.05" />
-                </linearGradient>
-              </defs>
+            <div className="relative">
+              <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-70 w-full" role="img" aria-label={`${metricLabels[activeMetric]} trend by month`}>
+                <defs>
+                  <linearGradient id="overviewAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.26" />
+                    <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.05" />
+                  </linearGradient>
+                </defs>
 
-              {[0, 1, 2, 3, 4].map((i) => {
-                const y = topPadding + (innerHeight / 4) * i;
-                return (
-                  <line
-                    key={i}
-                    x1={0}
-                    y1={y}
-                    x2={chartWidth}
-                    y2={y}
-                    stroke="#e2e8f0"
-                    strokeDasharray="4 6"
-                    strokeWidth="1"
-                  />
-                );
-              })}
+                {[0, 1, 2, 3, 4].map((i) => {
+                  const y = topPadding + (innerHeight / 4) * i;
+                  return (
+                    <line
+                      key={i}
+                      x1={0}
+                      y1={y}
+                      x2={chartWidth}
+                      y2={y}
+                      stroke="#e2e8f0"
+                      strokeDasharray="4 6"
+                      strokeWidth="1"
+                    />
+                  );
+                })}
 
-              {areaPath ? <path d={areaPath} fill="url(#overviewAreaGradient)" /> : null}
-              <polyline fill="none" stroke="#0ea5e9" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" points={linePoints} />
+                {areaPath ? <path d={areaPath} fill="url(#overviewAreaGradient)" /> : null}
+                <polyline fill="none" stroke="#0ea5e9" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" points={linePoints} />
 
-              {metricSeries.map((value, index) => {
-                const x = Math.round(index * stepX);
-                const y = Math.round(topPadding + innerHeight - (value / Math.max(maxValue, 1)) * innerHeight);
-                return <circle key={`${data.monthlyPoints[index].month}-${value}`} cx={x} cy={y} r="3.5" fill="#0284c7" />;
-              })}
-            </svg>
+                {metricSeries.map((value, index) => {
+                  const x = Math.round(index * stepX);
+                  const y = Math.round(topPadding + innerHeight - (value / chartScale) * innerHeight);
+                  return <circle key={`${data.monthlyPoints[index].month}-${value}`} cx={x} cy={y} r="3.5" fill="#0284c7" />;
+                })}
+              </svg>
+
+              {!hasTrendData ? (
+                <div className="absolute inset-0 flex items-center justify-center rounded-3xl bg-white/55 px-6 text-center backdrop-blur-[1px]">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">No live trend data yet</p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Add orders with dates and totals in Supabase to populate this chart.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
 
           <div className="mt-2 grid grid-cols-6 gap-2 text-center text-xs font-medium text-slate-400 sm:grid-cols-12">
