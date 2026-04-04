@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { Home, Package, ClipboardList } from "lucide-react";
+import { Home, Package, ClipboardList, ReceiptText } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const staffNavItems = [
   { label: "Staff Home", href: "/staff", icon: Home },
+  { label: "POS", href: "/staff/pos", icon: ReceiptText },
   { label: "Products", href: "/staff/products", icon: Package },
   { label: "Inventory", href: "/staff/inventory", icon: ClipboardList },
 ];
@@ -51,6 +52,7 @@ export function StaffSidebar() {
         .channel("staff-global-realtime")
         .on("postgres_changes", { event: "*", schema: "public", table: "products" }, scheduleRefresh)
         .on("postgres_changes", { event: "*", schema: "public", table: "zones" }, scheduleRefresh)
+        .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, scheduleRefresh)
         .subscribe();
 
       return () => {
@@ -146,7 +148,7 @@ export function StaffSidebar() {
               Shift focus
             </p>
             <p className="mt-2 text-sm text-slate-600">
-              Quickly check low stock, expiry alerts, and update quantities as you process sales.
+              Process checkout, monitor low stock, and keep shelf availability accurate.
             </p>
           </div>
         </div>

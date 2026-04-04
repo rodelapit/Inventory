@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createSupabaseAdminClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
+const ORDER_TABLE_CANDIDATES = ["orders", "orders table"] as const;
+
 type PosAction = "checkout" | "refund" | "void";
 
 type PosCartItem = {
@@ -80,6 +82,96 @@ function calculateDiscountAmount(subtotal: number, discountType: DiscountType, d
   }
 
   return 0;
+}
+
+function isMissingOrdersTableError(error: unknown): boolean {
+  const message =
+    error && typeof error === "object" && "message" in error && typeof (error as { message?: unknown }).message === "string"
+      ? (error as { message: string }).message.toLowerCase()
+      : String(error ?? "").toLowerCase();
+
+  return (
+    message.includes("could not find the table") ||
+    message.includes("does not exist") ||
+    message.includes("schema cache")
+  );
+}
+
+async function insertOrderWithFallback(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  payload: {
+    order_number: string;
+    customer_name: string;
+    total_amount: number;
+    order_status: string;
+    order_date: string;
+  },
+): Promise<{ tableUsed: string | null; error: { message: string } | null }> {
+  let lastError: { message: string } | null = null;
+
+  for (const table of ORDER_TABLE_CANDIDATES) {
+    const { error } = await supabase.from(table).insert(payload);
+    if (!error) {
+      return { tableUsed: table, error: null };
+    }
+
+    lastError = { message: error.message };
+    if (!isMissingOrdersTableError(error)) {
+      return { tableUsed: null, error: lastError };
+    }
+  }
+
+  return { tableUsed: null, error: lastError };
+}
+
+async function fetchOrderByNumber(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  orderNumber: string,
+  preferredTable: string | null,
+) {
+  const tablesToTry = preferredTable
+    ? [preferredTable, ...ORDER_TABLE_CANDIDATES.filter((table) => table !== preferredTable)]
+    : [...ORDER_TABLE_CANDIDATES];
+
+  for (const table of tablesToTry) {
+    const { data, error } = await supabase
+      .from(table)
+      .select("id, order_number, customer_name, total_amount, order_status, order_date")
+      .eq("order_number", orderNumber)
+      .maybeSingle();
+
+    if (!error) {
+      return { data, tableUsed: table, error: null };
+    }
+
+    if (!isMissingOrdersTableError(error)) {
+      return { data: null, tableUsed: null, error };
+    }
+  }
+
+  return { data: null, tableUsed: null, error: null };
+}
+
+async function updateSourceOrderStatus(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  orderNumber: string,
+  orderStatus: string,
+) {
+  for (const table of ORDER_TABLE_CANDIDATES) {
+    const { error } = await supabase
+      .from(table)
+      .update({ order_status: orderStatus })
+      .eq("order_number", orderNumber);
+
+    if (!error) {
+      return;
+    }
+
+    if (!isMissingOrdersTableError(error)) {
+      console.error("POS source order status update failed", error);
+      return;
+    }
+  }
 }
 
 export async function POST(req: Request) {
@@ -201,32 +293,42 @@ export async function POST(req: Request) {
         ? `Refunded - ${paymentMethod}`
         : `Voided - ${paymentMethod}`;
 
-    const { data: order, error: orderError } = await supabase
-      .from("orders")
-      .insert({
-        order_number: orderNumber,
-        customer_name:
-          action === "checkout"
-            ? cashierName
-            : `${cashierName} (${action.toUpperCase()}${sourceOrderNumber ? ` ${sourceOrderNumber}` : ""})`,
-        total_amount: orderTotalForInsert,
-        order_status: orderStatus,
-        order_date: completedAt,
-      })
-      .select()
-      .single();
+    const orderInsertPayload = {
+      order_number: orderNumber,
+      customer_name:
+        action === "checkout"
+          ? cashierName
+          : `${cashierName} (${action.toUpperCase()}${sourceOrderNumber ? ` ${sourceOrderNumber}` : ""})`,
+      total_amount: orderTotalForInsert,
+      order_status: orderStatus,
+      order_date: completedAt,
+    };
 
-    if (orderError) {
+    const orderInsertResult = await insertOrderWithFallback(supabase, orderInsertPayload);
+    const orderInsertError = orderInsertResult.error;
+
+    if (orderInsertError) {
       await rollbackStockLevels(supabase, originalStockLevels);
-      console.error("POS checkout order insert failed", orderError);
-      return NextResponse.json({ error: orderError.message }, { status: 500 });
+      console.error("POS checkout order insert failed", orderInsertError);
+      return NextResponse.json({ error: orderInsertError.message }, { status: 500 });
     }
 
+    const orderFetchResult = await fetchOrderByNumber(
+      supabase,
+      orderNumber,
+      orderInsertResult.tableUsed,
+    );
+
+    if (orderFetchResult.error) {
+      await rollbackStockLevels(supabase, originalStockLevels);
+      console.error("POS checkout order verification failed", orderFetchResult.error);
+      return NextResponse.json({ error: orderFetchResult.error.message }, { status: 500 });
+    }
+
+    const order = orderFetchResult.data ?? null;
+
     if (action !== "checkout" && sourceOrderNumber) {
-      await supabase
-        .from("orders")
-        .update({ order_status: orderStatus })
-        .eq("order_number", sourceOrderNumber);
+      await updateSourceOrderStatus(supabase, sourceOrderNumber, orderStatus);
     }
 
     try {
@@ -241,7 +343,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       data: {
-        order,
+        order: order ?? null,
         action,
         sourceOrderNumber: sourceOrderNumber || null,
         orderNumber,
@@ -256,6 +358,8 @@ export async function POST(req: Request) {
         completedAt,
         totalAmount: finalTotal,
         orderStatus,
+        orderPersistence: order ? "saved" : "unknown",
+        orderTable: orderFetchResult.tableUsed ?? orderInsertResult.tableUsed,
         itemCount: receiptItems.reduce((sum, item) => sum + item.quantity, 0),
         items: receiptItems,
       },

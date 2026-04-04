@@ -78,6 +78,7 @@ type ProfileCount = { count: number | null };
 
 const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const trafficColors = ["bg-blue-500", "bg-teal-500", "bg-sky-500", "bg-cyan-500", "bg-indigo-500"];
+const ORDER_TABLE_CANDIDATES = ["orders", "orders table"] as const;
 
 const emptyPerformanceData: AdminPerformanceData = {
   monthlyPoints: monthLabels.map((month) => ({ month, revenue: 0, orders: 0, profit: 0 })),
@@ -180,6 +181,42 @@ function getLast12MonthLabels(): string[] {
   return labels;
 }
 
+function isMissingOrdersTableError(error: unknown): boolean {
+  const message =
+    error && typeof error === "object" && "message" in error && typeof (error as { message?: unknown }).message === "string"
+      ? (error as { message: string }).message.toLowerCase()
+      : String(error ?? "").toLowerCase();
+
+  return (
+    message.includes("could not find the table") ||
+    message.includes("does not exist") ||
+    message.includes("schema cache")
+  );
+}
+
+async function loadOrdersWithFallback(supabase: ReturnType<typeof createSupabaseServerClient>) {
+  let lastError: { message: string } | null = null;
+
+  for (const table of ORDER_TABLE_CANDIDATES) {
+    const { data, error } = await supabase
+      .from(table)
+      .select("id, order_number, customer_name, total_amount, order_status, order_date, created_at")
+      .order("order_date", { ascending: false })
+      .limit(100);
+
+    if (!error) {
+      return { data: (data ?? []) as OrderRow[], error: null };
+    }
+
+    lastError = { message: error.message };
+    if (!isMissingOrdersTableError(error)) {
+      return { data: [] as OrderRow[], error: lastError };
+    }
+  }
+
+  return { data: [] as OrderRow[], error: lastError };
+}
+
 export async function getAdminPerformanceData(): Promise<AdminPerformanceData> {
   if (!isSupabaseConfigured()) {
     return emptyPerformanceData;
@@ -188,15 +225,13 @@ export async function getAdminPerformanceData(): Promise<AdminPerformanceData> {
   const supabase = createSupabaseServerClient();
 
   try {
+    const ordersPromise = loadOrdersWithFallback(supabase);
+
     const [{ data: products, error: productsError }, { data: orders, error: ordersError }, { count: profileCount, error: profileError }] = await Promise.all([
       supabase
         .from("products")
         .select("id, stock_level, status, storage_zone, expiration"),
-      supabase
-        .from("orders")
-        .select("id, order_number, customer_name, total_amount, order_status, order_date, created_at")
-        .order("order_date", { ascending: false })
-        .limit(100),
+      ordersPromise,
       supabase
         .from("profiles")
         .select("id", { count: "exact", head: true }),

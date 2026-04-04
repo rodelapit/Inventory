@@ -5,6 +5,8 @@ import { PerformanceOverviewPanel } from "../../components/dashboard/admin/Perfo
 import { getAdminPerformanceData } from "@/lib/dashboard/get-admin-performance-data";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
 
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   const performanceData = await getAdminPerformanceData();
   const liveDataUnavailable = !isSupabaseConfigured();

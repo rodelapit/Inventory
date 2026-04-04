@@ -350,6 +350,7 @@ export function PosTerminal({ initialProducts }: PosTerminalProps) {
           <div className="flex min-w-0 flex-1 items-center gap-3 rounded-full border border-slate-200 bg-white px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
             <Search className="h-4 w-4 text-slate-400" />
             <input
+              suppressHydrationWarning
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search SKU, product, supplier"
@@ -358,6 +359,7 @@ export function PosTerminal({ initialProducts }: PosTerminalProps) {
           </div>
 
           <select
+            suppressHydrationWarning
             aria-label="Filter by category"
             value={categoryFilter}
             onChange={(event) => setCategoryFilter(event.target.value)}
@@ -373,9 +375,9 @@ export function PosTerminal({ initialProducts }: PosTerminalProps) {
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredProducts.map((product) => (
+          {filteredProducts.map((product, index) => (
             <article
-              key={product.sku}
+              key={`${product.sku}-${product.name}-${index}`}
               className="rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_14px_34px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(15,23,42,0.08)]"
             >
               <div className="flex items-start justify-between gap-3">
@@ -410,6 +412,7 @@ export function PosTerminal({ initialProducts }: PosTerminalProps) {
                 </div>
 
                 <button
+                  suppressHydrationWarning
                   type="button"
                   onClick={() => addToCart(product)}
                   disabled={product.quantity <= 0}
@@ -441,6 +444,7 @@ export function PosTerminal({ initialProducts }: PosTerminalProps) {
           <label className="space-y-2 text-sm font-semibold text-slate-700">
             Cashier / Counter
             <input
+              suppressHydrationWarning
               value={cashierName}
               onChange={(event) => setCashierName(event.target.value)}
               className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-normal text-slate-800 outline-none focus:border-sky-400"
@@ -451,6 +455,7 @@ export function PosTerminal({ initialProducts }: PosTerminalProps) {
             <span>Payment method</span>
             <div className="grid grid-cols-2 gap-2">
               <button
+                suppressHydrationWarning
                 type="button"
                 onClick={() => setPaymentMethod("Cash")}
                 className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-sm font-semibold transition ${
@@ -463,6 +468,7 @@ export function PosTerminal({ initialProducts }: PosTerminalProps) {
                 <span>Cash</span>
               </button>
               <button
+                suppressHydrationWarning
                 type="button"
                 onClick={() => setPaymentMethod("Card")}
                 className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-sm font-semibold transition ${
@@ -481,6 +487,7 @@ export function PosTerminal({ initialProducts }: PosTerminalProps) {
             <span>Discount / promotion</span>
             <div className="grid grid-cols-3 gap-2">
               <button
+                suppressHydrationWarning
                 type="button"
                 onClick={() => setDiscountType("none")}
                 className={`rounded-xl border px-2 py-2 text-xs font-semibold ${
@@ -490,6 +497,7 @@ export function PosTerminal({ initialProducts }: PosTerminalProps) {
                 No discount
               </button>
               <button
+                suppressHydrationWarning
                 type="button"
                 onClick={() => setDiscountType("percent")}
                 className={`rounded-xl border px-2 py-2 text-xs font-semibold ${
@@ -499,6 +507,7 @@ export function PosTerminal({ initialProducts }: PosTerminalProps) {
                 Percent
               </button>
               <button
+                suppressHydrationWarning
                 type="button"
                 onClick={() => setDiscountType("fixed")}
                 className={`rounded-xl border px-2 py-2 text-xs font-semibold ${
@@ -511,6 +520,7 @@ export function PosTerminal({ initialProducts }: PosTerminalProps) {
 
             <div className="grid grid-cols-2 gap-2">
               <input
+                suppressHydrationWarning
                 value={discountValue}
                 onChange={(event) => setDiscountValue(event.target.value)}
                 type="number"
@@ -521,6 +531,7 @@ export function PosTerminal({ initialProducts }: PosTerminalProps) {
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-normal text-slate-800 outline-none disabled:opacity-50"
               />
               <input
+                suppressHydrationWarning
                 value={promoCode}
                 onChange={(event) => setPromoCode(event.target.value.toUpperCase())}
                 placeholder="Promo code"
@@ -530,6 +541,7 @@ export function PosTerminal({ initialProducts }: PosTerminalProps) {
 
             <div className="grid grid-cols-2 gap-2 text-xs">
               <button
+                suppressHydrationWarning
                 type="button"
                 onClick={() => {
                   setPromoCode("SAVE5");
@@ -541,6 +553,7 @@ export function PosTerminal({ initialProducts }: PosTerminalProps) {
                 Apply SAVE5
               </button>
               <button
+                suppressHydrationWarning
                 type="button"
                 onClick={() => {
                   setPromoCode("SAVE10");
@@ -563,6 +576,7 @@ export function PosTerminal({ initialProducts }: PosTerminalProps) {
             </div>
 
             <button
+              suppressHydrationWarning
               type="button"
               onClick={() => setCart([])}
               disabled={cart.length === 0}
@@ -588,6 +602,7 @@ export function PosTerminal({ initialProducts }: PosTerminalProps) {
                   <div className="mt-3 flex items-center justify-between gap-3">
                     <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-1 py-1">
                       <button
+                        suppressHydrationWarning
                         type="button"
                         onClick={() => updateCartQuantity(item.sku, item.cartQuantity - 1)}
                         aria-label={`Decrease quantity for ${item.name}`}
@@ -598,6 +613,7 @@ export function PosTerminal({ initialProducts }: PosTerminalProps) {
                       </button>
                       <span className="min-w-8 text-center text-sm font-semibold text-slate-900">{item.cartQuantity}</span>
                       <button
+                        suppressHydrationWarning
                         type="button"
                         onClick={() => updateCartQuantity(item.sku, item.cartQuantity + 1)}
                         disabled={item.cartQuantity >= item.quantity}
@@ -610,6 +626,7 @@ export function PosTerminal({ initialProducts }: PosTerminalProps) {
                     </div>
 
                     <button
+                      suppressHydrationWarning
                       type="button"
                       onClick={() => updateCartQuantity(item.sku, 0)}
                       className="text-xs font-semibold text-rose-600 transition hover:text-rose-700"
@@ -646,6 +663,7 @@ export function PosTerminal({ initialProducts }: PosTerminalProps) {
           </div>
 
           <button
+            suppressHydrationWarning
             type="button"
             onClick={handleCheckout}
             disabled={isSubmitting || cart.length === 0}
@@ -690,6 +708,7 @@ export function PosTerminal({ initialProducts }: PosTerminalProps) {
 
             <div className="mt-4 grid grid-cols-3 gap-2">
               <button
+                suppressHydrationWarning
                 type="button"
                 onClick={handlePrintReceipt}
                 className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
@@ -697,6 +716,7 @@ export function PosTerminal({ initialProducts }: PosTerminalProps) {
                 Print receipt
               </button>
               <button
+                suppressHydrationWarning
                 type="button"
                 onClick={() => handleReversal("void")}
                 disabled={isSubmitting || !lastCompletedSale}
@@ -705,6 +725,7 @@ export function PosTerminal({ initialProducts }: PosTerminalProps) {
                 Void sale
               </button>
               <button
+                suppressHydrationWarning
                 type="button"
                 onClick={() => handleReversal("refund")}
                 disabled={isSubmitting || !lastCompletedSale}

@@ -56,6 +56,7 @@ export default async function StaffLoginPage({ searchParams }: StaffLoginPagePro
             <label className="block text-sm">
               <span className="text-slate-300">Work email</span>
               <input
+                suppressHydrationWarning
                 name="email"
                 type="email"
                 required
@@ -67,6 +68,7 @@ export default async function StaffLoginPage({ searchParams }: StaffLoginPagePro
             <label className="block text-sm">
               <span className="text-slate-300">Password</span>
               <input
+                suppressHydrationWarning
                 name="password"
                 type="password"
                 required
@@ -76,6 +78,7 @@ export default async function StaffLoginPage({ searchParams }: StaffLoginPagePro
             </label>
 
             <button
+              suppressHydrationWarning
               type="submit"
               className="w-full rounded-2xl bg-linear-to-r from-emerald-300 to-cyan-300 py-3 text-sm font-semibold uppercase tracking-wide text-slate-900 shadow-lg shadow-emerald-500/30 transition hover:brightness-105"
             >
