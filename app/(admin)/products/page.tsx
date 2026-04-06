@@ -127,7 +127,7 @@ export default async function ProductsPage() {
                       Total value
                     </p>
                     <p className="mt-3 text-2xl font-bold text-emerald-900 sm:text-3xl">
-                      ${totalValue.toFixed(2)}
+                      ₱{totalValue.toFixed(2)}
                     </p>
                   </div>
                 </div>

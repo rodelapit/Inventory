@@ -27,7 +27,7 @@ export type OrderItem = {
   id: string;
   customer: string;
   amount: string;
-  status: "Delivered" | "In Transit" | "Pending";
+  status: "Delivered" | "In Transit" | "Pending" | "Voided" | "Refunded";
   date: string;
 };
 
@@ -83,7 +83,7 @@ const ORDER_TABLE_CANDIDATES = ["orders", "orders table"] as const;
 const emptyPerformanceData: AdminPerformanceData = {
   monthlyPoints: monthLabels.map((month) => ({ month, revenue: 0, orders: 0, profit: 0 })),
   monthlyGoals: [
-    { label: "Monthly Revenue", value: "$0", target: "$1,000", percent: 0, tone: "blue" },
+    { label: "Monthly Revenue", value: "₱0", target: "₱1,000", percent: 0, tone: "blue" },
     { label: "Delivered Orders", value: "0", target: "20", percent: 0, tone: "teal" },
     { label: "Critical Stock", value: "0", target: "0", percent: 100, tone: "blue" },
   ],
@@ -93,7 +93,7 @@ const emptyPerformanceData: AdminPerformanceData = {
   overviewCards: [
     {
       title: "Total Revenue",
-      value: "$0.00",
+      value: "₱0.00",
       trendText: "Add orders to see trends",
       iconKey: "Wallet",
       iconClass: "bg-blue-100 text-blue-700",
@@ -128,9 +128,9 @@ const emptyPerformanceData: AdminPerformanceData = {
 };
 
 function formatMoney(value: number): string {
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("en-PH", {
     style: "currency",
-    currency: "USD",
+    currency: "PHP",
     maximumFractionDigits: 0,
   }).format(value);
 }
@@ -155,8 +155,16 @@ function relativeTimeFrom(date?: string | null): string {
   return `${diffDays}d ago`;
 }
 
-function normalizeOrderStatus(status?: string | null): "Delivered" | "In Transit" | "Pending" {
+function normalizeOrderStatus(status?: string | null): "Delivered" | "In Transit" | "Pending" | "Voided" | "Refunded" {
   const value = (status ?? "").toLowerCase();
+
+  if (value.includes("void") || value.includes("cancel")) {
+    return "Voided";
+  }
+
+  if (value.includes("refund")) {
+    return "Refunded";
+  }
 
   if (value.includes("deliver") || value.includes("complete")) {
     return "Delivered";
@@ -299,9 +307,9 @@ export async function getAdminPerformanceData(): Promise<AdminPerformanceData> {
       return {
         id: orderNumber?.startsWith("#") ? orderNumber : `#${orderId}`,
         customer: row.customer_name?.trim() || "Walk-in Customer",
-        amount: new Intl.NumberFormat("en-US", {
+        amount: new Intl.NumberFormat("en-PH", {
           style: "currency",
-          currency: "USD",
+          currency: "PHP",
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         }).format(Number(row.total_amount ?? 0)),

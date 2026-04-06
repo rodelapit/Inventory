@@ -29,7 +29,7 @@ function buildStatCards(totalProducts: number, lowStockItems: number): StatCard[
     },
     {
       title: "Monthly Sales",
-      value: "$0",
+      value: "₱0",
       change: "Live",
       changeType: "neutral",
       iconName: "TrendingUp",

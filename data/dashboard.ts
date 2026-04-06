@@ -62,7 +62,7 @@ export const mockDashboardData: DashboardData = {
     },
     {
       title: "Monthly Sales",
-      value: "$45,231",
+      value: "₱45,231",
       change: "+8.1%",
       changeType: "positive",
       iconName: "TrendingUp",

@@ -247,7 +247,7 @@ export default function ProductsClient({ initialRows }: { initialRows: ProductRo
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-semibold text-slate-500">Price ($)</label>
+                <label className="mb-1 block text-xs font-semibold text-slate-500">Price (₱)</label>
                 <input
                   type="number"
                   min={0}
@@ -345,7 +345,7 @@ export default function ProductsClient({ initialRows }: { initialRows: ProductRo
                     {getStatusLabel(row.status)}
                   </span>
                 </td>
-                <td className="px-3 py-3 font-mono font-semibold text-emerald-700 sm:px-4">${row.price.toFixed(2)}</td>
+                <td className="px-3 py-3 font-mono font-semibold text-emerald-700 sm:px-4">₱{row.price.toFixed(2)}</td>
                 <td className="px-3 py-3 text-slate-600 sm:px-4">{row.supplier}</td>
                 <td className="px-3 py-3 sm:px-4">
                   <button className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,0.04)] transition hover:bg-slate-100 sm:text-xs">

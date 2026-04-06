@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Eye, ShoppingCart, Users, Wallet } from "lucide-react";
 import type { AdminPerformanceData, MetricKey } from "@/lib/dashboard/get-admin-performance-data";
 
@@ -23,14 +23,62 @@ type PerformanceOverviewPanelProps = {
 
 export function PerformanceOverviewPanel({ data }: PerformanceOverviewPanelProps) {
   const [activeMetric, setActiveMetric] = useState<MetricKey>("revenue");
+  const [displaySeries, setDisplaySeries] = useState<number[]>([]);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [animatedTooltipValue, setAnimatedTooltipValue] = useState(0);
+  const previousSeriesRef = useRef<number[]>([]);
+  const tooltipValueRef = useRef(0);
+  const tooltipFrameRef = useRef<number | null>(null);
 
   const metricSeries = useMemo(
     () => data.monthlyPoints.map((point) => point[activeMetric]),
     [activeMetric, data.monthlyPoints],
   );
 
+  useEffect(() => {
+    if (previousSeriesRef.current.length === 0) {
+      previousSeriesRef.current = metricSeries;
+      setDisplaySeries(metricSeries);
+      return;
+    }
+
+    const from = previousSeriesRef.current;
+    const to = metricSeries;
+    const duration = 320;
+    const start = performance.now();
+    let frameId = 0;
+
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+
+      setDisplaySeries(
+        to.map((value, index) => {
+          const fromValue = from[index] ?? 0;
+          return fromValue + (value - fromValue) * eased;
+        }),
+      );
+
+      if (progress < 1) {
+        frameId = window.requestAnimationFrame(tick);
+      } else {
+        previousSeriesRef.current = to;
+      }
+    };
+
+    frameId = window.requestAnimationFrame(tick);
+
+    return () => {
+      if (frameId) {
+        window.cancelAnimationFrame(frameId);
+      }
+    };
+  }, [metricSeries]);
+
+  const renderedSeries = displaySeries.length > 0 ? displaySeries : metricSeries;
+
   const hasTrendData = metricSeries.some((value) => value > 0);
-  const maxValue = useMemo(() => Math.max(...metricSeries, 1), [metricSeries]);
+  const maxValue = useMemo(() => Math.max(...renderedSeries, 1), [renderedSeries]);
   const chartScale = hasTrendData ? maxValue : 1;
 
   const chartWidth = 640;
@@ -40,7 +88,7 @@ export function PerformanceOverviewPanel({ data }: PerformanceOverviewPanelProps
   const innerHeight = chartHeight - topPadding - bottomPadding;
   const stepX = chartWidth / Math.max(metricSeries.length - 1, 1);
 
-  const linePoints = metricSeries
+  const linePoints = renderedSeries
     .map((value, index) => {
       const x = Math.round(index * stepX);
       const y = Math.round(topPadding + innerHeight - (value / chartScale) * innerHeight);
@@ -63,6 +111,96 @@ export function PerformanceOverviewPanel({ data }: PerformanceOverviewPanelProps
   }, []);
   const donutGradient = `conic-gradient(${trafficGradientParts.length > 0 ? trafficGradientParts.join(", ") : "#94a3b8 0% 100%"})`;
   const totalVisits = data.totalVisits;
+
+  const formatMetricValue = (metric: MetricKey, value: number) => {
+    if (metric === "orders") {
+      return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(Math.round(value));
+    }
+
+    return new Intl.NumberFormat("en-PH", {
+      style: "currency",
+      currency: "PHP",
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+
+  const hoveredValue = hoveredIndex !== null ? metricSeries[hoveredIndex] ?? 0 : 0;
+  const hoveredMonth = hoveredIndex !== null ? data.monthlyPoints[hoveredIndex]?.month ?? "" : "";
+  const hoveredX = hoveredIndex !== null ? Math.round(hoveredIndex * stepX) : 0;
+  const hoveredY =
+    hoveredIndex !== null
+      ? Math.round(topPadding + innerHeight - ((renderedSeries[hoveredIndex] ?? 0) / chartScale) * innerHeight)
+      : 0;
+  const hoveredXPercent = Math.max(0, Math.min(100, (hoveredX / chartWidth) * 100));
+  const hoveredYPercent = Math.max(8, ((hoveredY - 8) / chartHeight) * 100);
+
+  useEffect(() => {
+    if (hoveredIndex === null) {
+      if (tooltipFrameRef.current) {
+        window.cancelAnimationFrame(tooltipFrameRef.current);
+      }
+      tooltipValueRef.current = 0;
+      setAnimatedTooltipValue(0);
+      return;
+    }
+
+    if (tooltipFrameRef.current) {
+      window.cancelAnimationFrame(tooltipFrameRef.current);
+    }
+
+    const from = tooltipValueRef.current;
+    const to = hoveredValue;
+    const duration = 220;
+    const start = performance.now();
+
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const next = from + (to - from) * eased;
+
+      tooltipValueRef.current = next;
+      setAnimatedTooltipValue(next);
+
+      if (progress < 1) {
+        tooltipFrameRef.current = window.requestAnimationFrame(tick);
+      }
+    };
+
+    tooltipFrameRef.current = window.requestAnimationFrame(tick);
+
+    return () => {
+      if (tooltipFrameRef.current) {
+        window.cancelAnimationFrame(tooltipFrameRef.current);
+      }
+    };
+  }, [hoveredIndex, hoveredValue]);
+
+  const yAxisTicks = useMemo(
+    () =>
+      [0, 1, 2, 3, 4].map((i) => {
+        const ratio = 1 - i / 4;
+        const y = topPadding + (innerHeight / 4) * i;
+        const value = hasTrendData ? chartScale * ratio : 0;
+        return { value, y };
+      }),
+    [chartScale, hasTrendData, innerHeight, topPadding],
+  );
+
+  const formatAxisValue = (metric: MetricKey, value: number) => {
+    if (metric === "orders") {
+      return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(Math.round(value));
+    }
+
+    if (Math.abs(value) >= 1000) {
+      return `PHP ${Math.round(value / 1000)}k`;
+    }
+
+    return new Intl.NumberFormat("en-PH", {
+      style: "currency",
+      currency: "PHP",
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
 
   return (
     <section className="grid gap-5">
@@ -119,23 +257,36 @@ export function PerformanceOverviewPanel({ data }: PerformanceOverviewPanelProps
 
           <div className="mt-6 rounded-[28px] border border-slate-200/70 bg-white/70 p-3 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
             <div className="relative">
-              <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-70 w-full" role="img" aria-label={`${metricLabels[activeMetric]} trend by month`}>
+              <svg
+                viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+                className="h-70 w-full"
+                role="img"
+                aria-label={`${metricLabels[activeMetric]} trend by month`}
+                onMouseMove={(event) => {
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  const relativeX = event.clientX - rect.left;
+                  const ratio = rect.width > 0 ? relativeX / rect.width : 0;
+                  const index = Math.round(ratio * Math.max(renderedSeries.length - 1, 1));
+                  const clampedIndex = Math.max(0, Math.min(renderedSeries.length - 1, index));
+                  setHoveredIndex(clampedIndex);
+                }}
+                onMouseLeave={() => setHoveredIndex(null)}
+              >
                 <defs>
                   <linearGradient id="overviewAreaGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.26" />
-                    <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.05" />
+                    <stop offset="0%" stopColor="#0ea5e9" stopOpacity="0.34" />
+                    <stop offset="100%" stopColor="#0ea5e9" stopOpacity="0.04" />
                   </linearGradient>
                 </defs>
 
-                {[0, 1, 2, 3, 4].map((i) => {
-                  const y = topPadding + (innerHeight / 4) * i;
+                {yAxisTicks.map((tick, i) => {
                   return (
                     <line
                       key={i}
                       x1={0}
-                      y1={y}
+                      y1={tick.y}
                       x2={chartWidth}
-                      y2={y}
+                      y2={tick.y}
                       stroke="#e2e8f0"
                       strokeDasharray="4 6"
                       strokeWidth="1"
@@ -143,15 +294,68 @@ export function PerformanceOverviewPanel({ data }: PerformanceOverviewPanelProps
                   );
                 })}
 
-                {areaPath ? <path d={areaPath} fill="url(#overviewAreaGradient)" /> : null}
-                <polyline fill="none" stroke="#0ea5e9" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" points={linePoints} />
+                {yAxisTicks.map((tick, i) => (
+                  <text
+                    key={`tick-label-${i}`}
+                    x={8}
+                    y={tick.y - 6}
+                    fontSize="10"
+                    fill="#94a3b8"
+                  >
+                    {formatAxisValue(activeMetric, tick.value)}
+                  </text>
+                ))}
 
-                {metricSeries.map((value, index) => {
+                {areaPath ? <path d={areaPath} fill="url(#overviewAreaGradient)" /> : null}
+                <polyline
+                  fill="none"
+                  stroke="#0ea5e9"
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  points={linePoints}
+                  className="transition-all duration-300"
+                />
+
+                {hoveredIndex !== null ? (
+                  <line
+                    x1={hoveredX}
+                    y1={topPadding}
+                    x2={hoveredX}
+                    y2={chartHeight - bottomPadding}
+                    stroke="#38bdf8"
+                    strokeWidth="1"
+                    strokeDasharray="4 4"
+                  />
+                ) : null}
+
+                {renderedSeries.map((value, index) => {
                   const x = Math.round(index * stepX);
                   const y = Math.round(topPadding + innerHeight - (value / chartScale) * innerHeight);
-                  return <circle key={`${data.monthlyPoints[index].month}-${value}`} cx={x} cy={y} r="3.5" fill="#0284c7" />;
+                  const isHovered = hoveredIndex === index;
+
+                  return (
+                    <circle
+                      key={`${data.monthlyPoints[index].month}-${value}`}
+                      cx={x}
+                      cy={y}
+                      r={isHovered ? "6" : "3.5"}
+                      fill={isHovered ? "#0369a1" : "#0284c7"}
+                      className="transition-all duration-200"
+                    />
+                  );
                 })}
               </svg>
+
+              {hoveredIndex !== null ? (
+                <div
+                  className="pointer-events-none absolute z-10 -translate-x-1/2 rounded-2xl border border-slate-200/70 bg-white/95 px-3 py-2 text-xs shadow-[0_18px_30px_rgba(15,23,42,0.16)]"
+                  style={{ left: `${hoveredXPercent}%`, top: `${hoveredYPercent}%` }}
+                >
+                  <p className="font-semibold text-slate-900">{formatMetricValue(activeMetric, animatedTooltipValue)}</p>
+                  <p className="text-slate-500">{hoveredMonth}</p>
+                </div>
+              ) : null}
 
               {!hasTrendData ? (
                 <div className="absolute inset-0 flex items-center justify-center rounded-3xl bg-white/55 px-6 text-center backdrop-blur-[1px]">
@@ -264,6 +468,10 @@ export function PerformanceOverviewPanel({ data }: PerformanceOverviewPanelProps
                             ? "bg-emerald-100 text-emerald-700"
                             : order.status === "In Transit"
                             ? "bg-sky-100 text-sky-700"
+                            : order.status === "Voided"
+                            ? "bg-rose-100 text-rose-700"
+                            : order.status === "Refunded"
+                            ? "bg-violet-100 text-violet-700"
                             : "bg-amber-100 text-amber-700"
                         }`}
                       >

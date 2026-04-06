@@ -48,9 +48,9 @@ type CheckoutResponse = {
 };
 
 function formatMoney(value: number): string {
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("en-PH", {
     style: "currency",
-    currency: "USD",
+    currency: "PHP",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(value);
@@ -527,7 +527,7 @@ export function PosTerminal({ initialProducts }: PosTerminalProps) {
                 min={0}
                 step="0.01"
                 disabled={discountType === "none"}
-                placeholder={discountType === "percent" ? "%" : "$"}
+                placeholder={discountType === "percent" ? "%" : "₱"}
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-normal text-slate-800 outline-none disabled:opacity-50"
               />
               <input
