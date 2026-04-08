@@ -1,8 +1,6 @@
 import { ThemeProvider } from "../../../../components/ThemeProvider/ThemeProvider";
 import { StaffSidebar } from "../../../../components/dashboard/staff/StaffSidebar";
-import { getDashboardData } from "../../../../lib/dashboard/get-dashboard-data";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { requireStaffSession } from "@/lib/auth/session";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { TrendingUp } from "lucide-react";
 
@@ -22,99 +20,131 @@ type InventoryZone = {
   utilization: number;
   temperature: string;
   humidity: string;
+  color: "indigo" | "cyan" | "amber" | "blue" | "violet" | "pink";
 };
 
-const zoneCapacities: Record<string, { capacity: number; temperature: string; humidity: string }> = {
-  A: { capacity: 15000, temperature: "20-25°C", humidity: "45-55%" },
-  B: { capacity: 5000, temperature: "2-4°C", humidity: "85-90%" },
-  Q: { capacity: 500, temperature: "20°C", humidity: "50%" },
-  C: { capacity: 3000, temperature: "-18 to -20°C", humidity: "40-55%" },
-  D: { capacity: 8000, temperature: "18-22°C", humidity: "35-45%" },
-  E: { capacity: 2000, temperature: "18-22°C", humidity: "50%" },
+type ZoneRow = {
+  id: string;
+  label?: string | null;
+  name?: string | null;
+  capacity?: number | null;
+  temperature?: string | null;
+  humidity?: string | null;
+  color?: string | null;
 };
 
-const zoneMeta: Record<string, string> = {
-  A: "Ambient Storage",
-  B: "Cold Storage",
-  Q: "Quarantined Stock",
-  C: "Frozen Storage",
-  D: "Dry Storage",
-  E: "Receiving Area",
-};
+function normalizeZoneColor(value: string | null | undefined): InventoryZone["color"] {
+  const color = String(value ?? "").trim().toLowerCase();
+  if (color === "indigo" || color === "cyan" || color === "amber" || color === "blue" || color === "violet" || color === "pink") {
+    return color;
+  }
+  return "indigo";
+}
 
-const zoneColors: Record<string, { bg: string; text: string; border: string }> = {
-  A: { bg: "bg-indigo-500/20", text: "text-indigo-300", border: "border-indigo-500/30" },
-  B: { bg: "bg-cyan-500/20", text: "text-cyan-300", border: "border-cyan-500/30" },
-  Q: { bg: "bg-amber-500/20", text: "text-amber-300", border: "border-amber-500/30" },
-  C: { bg: "bg-blue-500/20", text: "text-blue-300", border: "border-blue-500/30" },
-  D: { bg: "bg-violet-500/20", text: "text-violet-300", border: "border-violet-500/30" },
-  E: { bg: "bg-pink-500/20", text: "text-pink-300", border: "border-pink-500/30" },
+const zoneColors: Record<InventoryZone["color"], { bg: string; text: string; border: string }> = {
+  indigo: { bg: "bg-indigo-500/20", text: "text-indigo-300", border: "border-indigo-500/30" },
+  cyan: { bg: "bg-cyan-500/20", text: "text-cyan-300", border: "border-cyan-500/30" },
+  amber: { bg: "bg-amber-500/20", text: "text-amber-300", border: "border-amber-500/30" },
+  blue: { bg: "bg-blue-500/20", text: "text-blue-300", border: "border-blue-500/30" },
+  violet: { bg: "bg-violet-500/20", text: "text-violet-300", border: "border-violet-500/30" },
+  pink: { bg: "bg-pink-500/20", text: "text-pink-300", border: "border-pink-500/30" },
 };
 
 export default async function StaffInventoryPage() {
-  const cookieStore = await cookies();
-  const staffAuth = cookieStore.get("staff_auth")?.value;
-
-  if (staffAuth !== "1") {
-    redirect("/staff/login");
-  }
+  await requireStaffSession();
 
   // fetch latest products directly from Supabase
   let products: InventoryProduct[] = [];
+  let configuredZones: InventoryZone[] = [];
   if (isSupabaseConfigured()) {
     try {
       const supabase = createSupabaseServerClient();
-      const { data, error } = await supabase
-        .from("products")
-        .select("stock_level, storage_zone");
+      const [{ data: productData, error: productError }, { data: zoneData, error: zoneError }] = await Promise.all([
+        supabase.from("products").select("stock_level, storage_zone"),
+        supabase.from("zones").select("id, label, name, capacity, temperature, humidity, color").order("id", { ascending: true }),
+      ]);
 
-      if (!error && Array.isArray(data)) {
+      if (!productError && Array.isArray(productData)) {
         type ProductZoneRow = {
           stock_level?: number | null;
           storage_zone?: string | null;
         };
 
-        products = (data as ProductZoneRow[]).map((p) => ({
+        products = (productData as ProductZoneRow[]).map((p) => ({
           quantity: Number(p.stock_level ?? 0),
           storageZone: p.storage_zone ?? null,
         }));
       }
+
+      if (!zoneError && Array.isArray(zoneData)) {
+        configuredZones = (zoneData as ZoneRow[]).map((zone) => {
+          const id = String(zone.id ?? "").trim().toUpperCase();
+          const capacity = Number(zone.capacity ?? 0);
+          return {
+            id,
+            label: String(zone.label ?? "").trim() || `ZONE ${id}`,
+            name: String(zone.name ?? "").trim() || `Storage Zone ${id}`,
+            current: 0,
+            capacity: capacity > 0 ? capacity : 1000,
+            utilization: 0,
+            temperature: String(zone.temperature ?? "").trim() || "N/A",
+            humidity: String(zone.humidity ?? "").trim() || "N/A",
+            color: normalizeZoneColor(zone.color),
+          };
+        });
+      }
     } catch {
       products = [];
+      configuredZones = [];
     }
   }
 
   // derive per-zone current values from products using storageZone
   const zoneCurrentMap = new Map<string, number>();
+  const knownZoneIds = new Set(configuredZones.map((zone) => zone.id.toUpperCase()));
+  let unassignedCurrent = 0;
+
   for (const p of products) {
     const rawZone = (p.storageZone ?? "").toString().trim().toUpperCase();
-    const zone = rawZone || "E";
-    const previous = zoneCurrentMap.get(zone) ?? 0;
     const qty = Number.isNaN(Number(p.quantity)) ? 0 : Number(p.quantity);
-    zoneCurrentMap.set(zone, previous + qty);
+
+    if (!rawZone || !knownZoneIds.has(rawZone)) {
+      unassignedCurrent += qty;
+      continue;
+    }
+
+    const previous = zoneCurrentMap.get(rawZone) ?? 0;
+    zoneCurrentMap.set(rawZone, previous + qty);
   }
 
-  const zones: InventoryZone[] = Object.entries(zoneCapacities).map(
-    ([id, { capacity, temperature, humidity }]) => {
-      const current = zoneCurrentMap.get(id.toUpperCase()) ?? 0;
-      const utilization = Math.round((current / Math.max(1, capacity)) * 100);
+  const zonesFromSupabase: InventoryZone[] = configuredZones.map((zone) => {
+      const current = zoneCurrentMap.get(zone.id.toUpperCase()) ?? 0;
+      const utilization = Math.round((current / Math.max(1, zone.capacity)) * 100);
       return {
-        id,
-        label: `ZONE ${id}`,
-        name: zoneMeta[id] || `Storage Zone ${id}`,
+        ...zone,
         current,
-        capacity,
         utilization: Math.min(100, utilization),
-        temperature,
-        humidity,
       };
-    }
-  );
+  });
 
-  const totalCapacity = zones.reduce((sum, z) => sum + z.capacity, 0);
+  const unassignedZone: InventoryZone = {
+    id: "UNASSIGNED",
+    label: "UNASSIGNED",
+    name: "Unassigned Products",
+    current: unassignedCurrent,
+    capacity: Math.max(unassignedCurrent, 1),
+    utilization: unassignedCurrent > 0 ? 100 : 0,
+    temperature: "N/A",
+    humidity: "N/A",
+    color: "amber",
+  };
+
+  const zones: InventoryZone[] = [...zonesFromSupabase, unassignedZone];
+
+  const totalCapacity = zonesFromSupabase.reduce((sum, z) => sum + z.capacity, 0);
   const totalCurrent = zones.reduce((sum, z) => sum + z.current, 0);
   const avgUtilization = Math.round((totalCurrent / Math.max(1, totalCapacity)) * 100);
-  const availableSpace = totalCapacity - totalCurrent;
+  const availableSpace = Math.max(0, totalCapacity - totalCurrent);
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-(--bg) text-(--text)">
@@ -204,7 +234,7 @@ export default async function StaffInventoryPage() {
 
                   <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     {zones.map((zone) => {
-                      const colors = zoneColors[zone.id.toUpperCase()] || zoneColors.A;
+                      const colors = zoneColors[zone.color] || zoneColors.indigo;
                       const utilizationColor =
                         zone.utilization >= 90
                           ? "bg-rose-500"

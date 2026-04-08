@@ -3,19 +3,13 @@ import { StaffSidebar } from "../../../components/dashboard/staff/StaffSidebar";
 import { StaffHeroSectionLive } from "../../../components/dashboard/staff/StaffHeroSectionLive";
 import { ProductManagementSectionLive } from "../../../components/dashboard/shared/ProductManagementSectionLive";
 import { getDashboardData } from "../../../lib/dashboard/get-dashboard-data";
+import { requireStaffSession } from "@/lib/auth/session";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function StaffDashboardPage() {
-  const cookieStore = await cookies();
-  const staffAuth = cookieStore.get("staff_auth")?.value;
-
-  if (staffAuth !== "1") {
-    redirect("/staff/login");
-  }
+  await requireStaffSession();
 
   const dashboardData = await getDashboardData();
   const liveDataUnavailable = !isSupabaseConfigured();

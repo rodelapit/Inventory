@@ -2,18 +2,12 @@ import { ThemeProvider } from "../../../../components/ThemeProvider/ThemeProvide
 import { StaffSidebar } from "../../../../components/dashboard/staff/StaffSidebar";
 import { ProductManagementSectionLive } from "../../../../components/dashboard/shared/ProductManagementSectionLive";
 import { getDashboardData } from "../../../../lib/dashboard/get-dashboard-data";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { requireStaffSession } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function StaffProductsPage() {
-  const cookieStore = await cookies();
-  const staffAuth = cookieStore.get("staff_auth")?.value;
-
-  if (staffAuth !== "1") {
-    redirect("/staff/login");
-  }
+  await requireStaffSession();
 
   const dashboardData = await getDashboardData();
 

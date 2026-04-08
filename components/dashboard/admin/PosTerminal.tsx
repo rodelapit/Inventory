@@ -20,6 +20,7 @@ type CartItem = PosProduct & {
 
 type PosTerminalProps = {
   initialProducts: PosProduct[];
+  actorUserId?: string | null;
 };
 
 type CheckoutResponse = {
@@ -62,7 +63,7 @@ function getStatusPill(status: PosProduct["status"]): string {
   return "bg-emerald-100 text-emerald-700";
 }
 
-export function PosTerminal({ initialProducts }: PosTerminalProps) {
+export function PosTerminal({ initialProducts, actorUserId }: PosTerminalProps) {
   const [products, setProducts] = useState<PosProduct[]>(initialProducts);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -161,6 +162,7 @@ export function PosTerminal({ initialProducts }: PosTerminalProps) {
         body: JSON.stringify({
           action: "checkout",
           cashierName,
+          cashierUserId: actorUserId,
           paymentMethod,
           promoCode,
           discountType,
@@ -220,6 +222,7 @@ export function PosTerminal({ initialProducts }: PosTerminalProps) {
         body: JSON.stringify({
           action,
           cashierName,
+          cashierUserId: actorUserId,
           paymentMethod,
           sourceOrderNumber: lastCompletedSale.orderNumber,
           items: lastCompletedSale.items.map((item) => ({ sku: item.sku, quantity: item.quantity })),

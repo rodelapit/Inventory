@@ -1,9 +1,9 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getSupabaseEnv } from "@/lib/supabase/config";
+import { clearSessionCookies, setSessionCookies } from "@/lib/auth/session";
 import {
   createSupabaseAdminClient,
   createSupabaseServerClient,
@@ -20,7 +20,7 @@ export async function loginWithPassword(formData: FormData) {
   if (!email || !password) {
     redirect(`${loginPath}?error=missing-fields`);
   }
-
+      
   if (!isSupabaseConfigured()) {
     redirect(`${loginPath}?error=supabase-not-configured`);
   }
@@ -72,20 +72,15 @@ export async function loginWithPassword(formData: FormData) {
     redirect(`${loginPath}?error=admin-role-required`);
   }
 
-  const cookieStore = await cookies();
-
-  if (resolvedRole === "staff") {
-    cookieStore.set("staff_auth", "1", {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 60 * 60 * 8,
-    });
-    redirect("/staff");
+  if (data.session?.access_token) {
+    await setSessionCookies(data.session.access_token, data.session.refresh_token);
+  } else {
+    await clearSessionCookies();
   }
 
-  cookieStore.delete("staff_auth");
+  if (resolvedRole === "staff") {
+    redirect("/staff");
+  }
 
   redirect("/");
 }

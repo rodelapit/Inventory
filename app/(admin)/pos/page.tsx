@@ -2,6 +2,7 @@ import { AppSidebar } from "../../../components/dashboard/admin/AppSidebar";
 import { ThemeProvider } from "../../../components/ThemeProvider/ThemeProvider";
 import { PageHeader } from "../../../components/dashboard/admin/PageHeader";
 import { PosTerminal } from "../../../components/dashboard/admin/PosTerminal";
+import { getCurrentSessionUser } from "@/lib/auth/session";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -63,6 +64,7 @@ async function loadPosProducts(): Promise<PosProduct[]> {
 }
 
 export default async function PosPage() {
+  const sessionUser = await getCurrentSessionUser();
   const liveDataUnavailable = !isSupabaseConfigured();
   const products = await loadPosProducts();
 
@@ -110,7 +112,7 @@ export default async function PosPage() {
                   </div>
                 </div>
 
-                <PosTerminal initialProducts={products} />
+                <PosTerminal initialProducts={products} actorUserId={sessionUser?.userId ?? null} />
               </div>
             </div>
           </ThemeProvider>

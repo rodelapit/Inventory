@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createSupabaseAdminClient, createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { endRequestLog, logRequestError, logRequestEvent, startRequestLog } from "@/lib/observability/request";
 
 type ProductSelectRow = {
   sku: string;
@@ -14,29 +15,27 @@ type ProductSelectRow = {
 };
 
 export async function GET() {
-  console.log("GET /api/products called");
-  console.log("SUPABASE_SERVICE_ROLE_KEY present:", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
-  console.log("SUPABASE_SERVICE_ROLE_KEY length:", process.env.SUPABASE_SERVICE_ROLE_KEY?.length ?? 0);
+  const context = startRequestLog("/api/products", "products_list");
 
   if (!isSupabaseConfigured()) {
-    console.error("Supabase not configured");
-    return NextResponse.json({ error: "Supabase not configured", data: [] }, { status: 500 });
+    endRequestLog(context, 500);
+    return NextResponse.json({ error: "Supabase not configured", data: [], requestId: context.requestId }, { status: 500 });
   }
 
   try {
-    console.log("Creating Supabase client...");
     const supabase = createSupabaseServerClient();
-    console.log("Querying products table...");
     const { data, error } = await supabase
       .from("products")
       .select("sku, product_name, category, stock_level, status, price, supplier, storage_zone")
       .order("product_name", { ascending: true });
 
     if (error) {
-      console.error("API /api/products select error:", JSON.stringify(error));
-      return NextResponse.json({ error: error.message, data: [] }, { status: 500 });
+      await logRequestError(context, "products_list_failed", error);
+      endRequestLog(context, 500);
+      return NextResponse.json({ error: error.message, data: [], requestId: context.requestId }, { status: 500 });
     }
-    console.log("Query successful, rows returned:", data?.length ?? 0);
+    logRequestEvent(context, "products_listed", { count: data?.length ?? 0 } as never);
+    endRequestLog(context, 200);
 
     const rows = (data ?? []).map((p: ProductSelectRow) => ({
       sku: p.sku,
@@ -49,15 +48,16 @@ export async function GET() {
       storageZone: p.storage_zone ?? null,
     }));
 
-    return NextResponse.json({ data: rows });
+    return NextResponse.json({ data: rows, requestId: context.requestId });
   } catch (err) {
-    console.error("Unexpected error in /api/products:", err instanceof Error ? err.message : String(err));
-    console.error("Full error:", err);
-    return NextResponse.json({ error: "Unexpected error", data: [] }, { status: 500 });
+    await logRequestError(context, "products_list_unexpected", err);
+    endRequestLog(context, 500);
+    return NextResponse.json({ error: "Unexpected error", data: [], requestId: context.requestId }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
+  const context = startRequestLog("/api/products", "products_create");
   try {
     const body = await req.json();
 
@@ -72,11 +72,13 @@ export async function POST(req: Request) {
     const storage_zone = String(body.storage_zone ?? "").trim() || null;
 
     if (!name) {
-      return NextResponse.json({ error: "Product name required" }, { status: 400 });
+      endRequestLog(context, 400);
+      return NextResponse.json({ error: "Product name required", requestId: context.requestId }, { status: 400 });
     }
 
     if (!isSupabaseConfigured()) {
-      return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
+      endRequestLog(context, 500);
+      return NextResponse.json({ error: "Supabase not configured", requestId: context.requestId }, { status: 500 });
     }
 
     // Auto-generate SKU if not provided
@@ -124,12 +126,15 @@ export async function POST(req: Request) {
           {
             error:
               "Insert blocked by Supabase RLS. Add SUPABASE_SERVICE_ROLE_KEY to .env.local or create an INSERT policy for your authenticated role.",
+            requestId: context.requestId,
           },
           { status: 403 },
         );
       }
 
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      await logRequestError(context, "products_create_failed", error);
+      endRequestLog(context, 500);
+      return NextResponse.json({ error: error.message, requestId: context.requestId }, { status: 500 });
     }
 
     // invalidate cached server-rendered pages that depend on products
@@ -143,7 +148,9 @@ export async function POST(req: Request) {
       console.error("revalidatePath error:", e);
     }
 
-    return NextResponse.json({ data: data });
+    logRequestEvent(context, "product_created", { sku, stock_level } as never);
+    endRequestLog(context, 200);
+    return NextResponse.json({ data: data, requestId: context.requestId });
   } catch (err) {
     console.error("Unexpected error in POST /api/products", err);
 
@@ -152,12 +159,15 @@ export async function POST(req: Request) {
         {
           error:
             "SUPABASE_SERVICE_ROLE_KEY is not configured. Add it to .env.local so server API routes can write products.",
+          requestId: context.requestId,
         },
         { status: 500 },
       );
     }
 
-    return NextResponse.json({ error: "Unexpected error" }, { status: 500 });
+    await logRequestError(context, "products_create_unexpected", err);
+    endRequestLog(context, 500);
+    return NextResponse.json({ error: "Unexpected error", requestId: context.requestId }, { status: 500 });
   }
 }
 
@@ -168,9 +178,11 @@ function normalizeStockStatus(stockLevel: number): "In Stock" | "Low" | "Critica
 }
 
 export async function PATCH(req: Request) {
+  const context = startRequestLog("/api/products", "products_adjust_stock");
   try {
     if (!isSupabaseConfigured()) {
-      return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
+      endRequestLog(context, 500);
+      return NextResponse.json({ error: "Supabase not configured", requestId: context.requestId }, { status: 500 });
     }
 
     const body = await req.json();
@@ -178,11 +190,13 @@ export async function PATCH(req: Request) {
     const inputStock = Number(body.stockLevel);
 
     if (!sku) {
-      return NextResponse.json({ error: "SKU is required" }, { status: 400 });
+      endRequestLog(context, 400);
+      return NextResponse.json({ error: "SKU is required", requestId: context.requestId }, { status: 400 });
     }
 
     if (Number.isNaN(inputStock) || inputStock < 0) {
-      return NextResponse.json({ error: "stockLevel must be a non-negative number" }, { status: 400 });
+      endRequestLog(context, 400);
+      return NextResponse.json({ error: "stockLevel must be a non-negative number", requestId: context.requestId }, { status: 400 });
     }
 
     const stockLevel = Math.floor(inputStock);
@@ -201,7 +215,9 @@ export async function PATCH(req: Request) {
 
     if (error) {
       console.error("API /api/products patch error", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      await logRequestError(context, "products_adjust_stock_failed", error, { sku, stockLevel } as never);
+      endRequestLog(context, 500);
+      return NextResponse.json({ error: error.message, requestId: context.requestId }, { status: 500 });
     }
 
     try {
@@ -216,9 +232,13 @@ export async function PATCH(req: Request) {
       console.error("revalidatePath error (PATCH /api/products):", e);
     }
 
-    return NextResponse.json({ data });
+    logRequestEvent(context, "product_stock_adjusted", { sku, stockLevel, status } as never);
+    endRequestLog(context, 200);
+    return NextResponse.json({ data, requestId: context.requestId });
   } catch (err) {
     console.error("Unexpected error in PATCH /api/products", err);
-    return NextResponse.json({ error: "Unexpected error" }, { status: 500 });
+    await logRequestError(context, "products_adjust_stock_unexpected", err);
+    endRequestLog(context, 500);
+    return NextResponse.json({ error: "Unexpected error", requestId: context.requestId }, { status: 500 });
   }
 }

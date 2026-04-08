@@ -1,9 +1,8 @@
 import { ThemeProvider } from "../../../../components/ThemeProvider/ThemeProvider";
 import { StaffSidebar } from "../../../../components/dashboard/staff/StaffSidebar";
 import { PosTerminal } from "../../../../components/dashboard/admin/PosTerminal";
+import { requireStaffSession } from "@/lib/auth/session";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -64,12 +63,7 @@ async function loadPosProducts(): Promise<PosProduct[]> {
 }
 
 export default async function StaffPosPage() {
-  const cookieStore = await cookies();
-  const staffAuth = cookieStore.get("staff_auth")?.value;
-
-  if (staffAuth !== "1") {
-    redirect("/staff/login");
-  }
+  const staffSession = await requireStaffSession();
 
   const liveDataUnavailable = !isSupabaseConfigured();
   const products = await loadPosProducts();
@@ -127,7 +121,7 @@ export default async function StaffPosPage() {
                   </div>
                 </div>
 
-                <PosTerminal initialProducts={products} />
+                <PosTerminal initialProducts={products} actorUserId={staffSession.userId} />
               </div>
             </div>
           </main>

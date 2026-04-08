@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   const performanceData = await getAdminPerformanceData();
   const liveDataUnavailable = !isSupabaseConfigured();
-  const notifications = performanceData.recentActivity;
+  const notifications = performanceData.alertsCenter;
   const notificationCount = notifications.length;
 
   const todayLabel = new Intl.DateTimeFormat("en-US", {
@@ -87,12 +87,12 @@ export default async function Home() {
                         {notifications.length > 0 ? (
                           notifications.map((item, index) => (
                             <article
-                              key={`${item.actor}-${item.time}-${index}`}
+                              key={`${item.id}-${index}`}
                               className="rounded-xl border border-slate-900/8 bg-slate-50/70 p-3"
                             >
-                              <p className="text-sm font-semibold text-slate-900">{item.actor}</p>
-                              <p className="mt-1 text-sm text-slate-600">{item.action}</p>
-                              <p className="mt-2 text-xs font-medium text-sky-700">{item.time}</p>
+                              <p className="text-sm font-semibold text-slate-900">{item.title}</p>
+                              <p className="mt-1 text-sm text-slate-600">{item.message}</p>
+                              <p className="mt-2 text-xs font-medium text-sky-700">{item.metric}</p>
                             </article>
                           ))
                         ) : (

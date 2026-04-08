@@ -8,76 +8,13 @@ import { Package, Archive, TrendingUp, BarChart3, Filter } from "lucide-react";
 import Link from "next/link";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
-const inventoryZones: InventoryZone[] = [
-  {
-    id: "A",
-    label: "ZONE A",
-    name: "Ambient Storage",
-    current: 12480,
-    capacity: 15000,
-    utilization: 83,
-    temperature: "20-25°C",
-    humidity: "45-55%",
-    color: "indigo",
-  },
-  {
-    id: "B",
-    label: "ZONE B",
-    name: "Cold Storage",
-    current: 4210,
-    capacity: 5000,
-    utilization: 84,
-    temperature: "2-4°C",
-    humidity: "85-90%",
-    color: "cyan",
-  },
-  {
-    id: "Q",
-    label: "ZONE Q",
-    name: "Quarantined Stock",
-    current: 320,
-    capacity: 500,
-    utilization: 64,
-    temperature: "20°C",
-    humidity: "50%",
-    color: "amber",
-  },
-  {
-    id: "C",
-    label: "ZONE C",
-    name: "Frozen Storage",
-    current: 2456,
-    capacity: 3000,
-    utilization: 82,
-    temperature: "-18 to -20°C",
-    humidity: "40-55%",
-    color: "blue",
-  },
-  {
-    id: "D",
-    label: "ZONE D",
-    name: "Dry Storage",
-    current: 6234,
-    capacity: 8000,
-    utilization: 78,
-    temperature: "18-22°C",
-    humidity: "35-45%",
-    color: "violet",
-  },
-  {
-    id: "E",
-    label: "ZONE E",
-    name: "Receiving Area",
-    current: 1876,
-    capacity: 2000,
-    utilization: 94,
-    temperature: "18-22°C",
-    humidity: "50%",
-    color: "pink",
-  },
-];
-
-const totalCapacity = inventoryZones.reduce((sum, zone) => sum + zone.capacity, 0);
+function normalizeZoneColor(value: string | null | undefined): InventoryZone["color"] {
+  const color = String(value ?? "").trim().toLowerCase();
+  if (color === "indigo" || color === "cyan" || color === "amber" || color === "blue" || color === "violet" || color === "pink") {
+    return color;
+  }
+  return "indigo";
+}
 
 // Always use live data so inventory reflects the latest products
 export const dynamic = "force-dynamic";
@@ -87,47 +24,85 @@ type InventoryProduct = {
   storageZone?: string | null;
 };
 
+type ZoneRow = {
+  id: string;
+  label?: string | null;
+  name?: string | null;
+  capacity?: number | null;
+  temperature?: string | null;
+  humidity?: string | null;
+  color?: string | null;
+};
+
 // NOTE: compute dynamic totals from products when available
 export default async function InventoryPage() {
   // fetch latest products directly from Supabase to avoid server-side relative URL fetch issues
   let products: InventoryProduct[] = [];
+  let configuredZones: InventoryZone[] = [];
   const supabaseConfigured = isSupabaseConfigured();
   if (supabaseConfigured) {
     try {
       const supabase = createSupabaseServerClient();
-      const { data, error } = await supabase
-        .from("products")
-        .select("stock_level, storage_zone");
+      const [{ data: productData, error: productError }, { data: zoneData, error: zoneError }] = await Promise.all([
+        supabase.from("products").select("stock_level, storage_zone"),
+        supabase.from("zones").select("id, label, name, capacity, temperature, humidity, color").order("id", { ascending: true }),
+      ]);
 
-      if (!error && Array.isArray(data)) {
+      if (!productError && Array.isArray(productData)) {
         type ProductZoneRow = {
           stock_level?: number | null;
           storage_zone?: string | null;
         };
 
-        products = (data as ProductZoneRow[]).map((p) => ({
+        products = (productData as ProductZoneRow[]).map((p) => ({
           quantity: Number(p.stock_level ?? 0),
           storageZone: p.storage_zone ?? null,
         }));
       }
+
+      if (!zoneError && Array.isArray(zoneData)) {
+        configuredZones = (zoneData as ZoneRow[]).map((zone) => {
+          const id = String(zone.id ?? "").trim().toUpperCase();
+          const capacity = Number(zone.capacity ?? 0);
+          return {
+            id,
+            label: String(zone.label ?? "").trim() || `ZONE ${id}`,
+            name: String(zone.name ?? "").trim() || `Storage Zone ${id}`,
+            current: 0,
+            capacity: capacity > 0 ? capacity : 1000,
+            utilization: 0,
+            temperature: String(zone.temperature ?? "").trim() || "N/A",
+            humidity: String(zone.humidity ?? "").trim() || "N/A",
+            color: normalizeZoneColor(zone.color),
+          };
+        });
+      }
     } catch {
       // keep empty products on query failure
       products = [];
+      configuredZones = [];
     }
   }
 
   // derive per-zone current values from products using storageZone
   const zoneCurrentMap = new Map<string, number>();
+  const knownZoneIds = new Set(configuredZones.map((zone) => zone.id.toUpperCase()));
+  let unassignedCurrent = 0;
+
   for (const p of products) {
     const rawZone = (p.storageZone ?? "").toString().trim().toUpperCase();
-    // Default unassigned stock to receiving area so newly added products are reflected immediately.
-    const zone = rawZone || "E";
-    const previous = zoneCurrentMap.get(zone) ?? 0;
     const qty = Number.isNaN(Number(p.quantity)) ? 0 : Number(p.quantity);
-    zoneCurrentMap.set(zone, previous + qty);
+
+    if (!rawZone || !knownZoneIds.has(rawZone)) {
+      unassignedCurrent += qty;
+      continue;
+    }
+
+    const previous = zoneCurrentMap.get(rawZone) ?? 0;
+    zoneCurrentMap.set(rawZone, previous + qty);
   }
 
-  const zonesWithDynamicCurrent = inventoryZones.map((zone) => {
+  const zonesWithDynamicCurrent = configuredZones.map((zone) => {
     const current = zoneCurrentMap.get(zone.id.toUpperCase()) ?? 0;
     const utilization = Math.round((current / Math.max(1, zone.capacity)) * 100);
     return {
@@ -137,8 +112,22 @@ export default async function InventoryPage() {
     };
   });
 
-  const totalCurrent = zonesWithDynamicCurrent.reduce((sum, z) => sum + z.current, 0);
-  const availableSpace = totalCapacity - totalCurrent;
+  const unassignedZone: InventoryZone = {
+    id: "UNASSIGNED",
+    label: "UNASSIGNED",
+    name: "Unassigned Products",
+    current: unassignedCurrent,
+    capacity: Math.max(unassignedCurrent, 1),
+    utilization: unassignedCurrent > 0 ? 100 : 0,
+    temperature: "N/A",
+    humidity: "N/A",
+    color: "amber",
+  };
+
+  const zonesForDisplay = [...zonesWithDynamicCurrent, unassignedZone];
+  const totalCapacity = zonesWithDynamicCurrent.reduce((sum, zone) => sum + zone.capacity, 0);
+  const totalCurrent = zonesWithDynamicCurrent.reduce((sum, zone) => sum + zone.current, 0) + unassignedCurrent;
+  const availableSpace = Math.max(0, totalCapacity - totalCurrent);
   const avgUtilization = Math.round((totalCurrent / Math.max(1, totalCapacity)) * 100);
 
   return (
@@ -188,7 +177,7 @@ export default async function InventoryPage() {
                   <p className="mt-1 text-sm text-slate-600">Capacity, conditions, and utilization by zone</p>
                 </div>
 
-                <InventoryZonesSectionLive initialZones={zonesWithDynamicCurrent} />
+                <InventoryZonesSectionLive initialZones={zonesForDisplay} />
               </section>
 
               {/* Quick Actions */}

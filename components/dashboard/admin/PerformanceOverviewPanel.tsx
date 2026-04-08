@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Eye, ShoppingCart, Users, Wallet } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { Eye, ShoppingCart, Users, Wallet, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import type { AdminPerformanceData, MetricKey } from "@/lib/dashboard/get-admin-performance-data";
 
 const metricLabels: Record<MetricKey, string> = {
@@ -22,10 +23,12 @@ type PerformanceOverviewPanelProps = {
 };
 
 export function PerformanceOverviewPanel({ data }: PerformanceOverviewPanelProps) {
+  const router = useRouter();
   const [activeMetric, setActiveMetric] = useState<MetricKey>("revenue");
   const [displaySeries, setDisplaySeries] = useState<number[]>([]);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [animatedTooltipValue, setAnimatedTooltipValue] = useState(0);
+  const [selectedOrder, setSelectedOrder] = useState<AdminPerformanceData["recentOrders"][number] | null>(null);
   const previousSeriesRef = useRef<number[]>([]);
   const tooltipValueRef = useRef(0);
   const tooltipFrameRef = useRef<number | null>(null);
@@ -200,6 +203,27 @@ export function PerformanceOverviewPanel({ data }: PerformanceOverviewPanelProps
       currency: "PHP",
       maximumFractionDigits: 0,
     }).format(value);
+  };
+
+  const navigateTo = (href?: string) => {
+    if (!href) return;
+    router.push(href);
+  };
+
+  const handleKeyNavigate = (event: KeyboardEvent<HTMLElement>, href?: string) => {
+    if (!href) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      router.push(href);
+    }
+  };
+
+  const openOrderDrawer = (order: AdminPerformanceData["recentOrders"][number]) => {
+    setSelectedOrder(order);
+  };
+
+  const closeOrderDrawer = () => {
+    setSelectedOrder(null);
   };
 
   return (
@@ -439,7 +463,7 @@ export function PerformanceOverviewPanel({ data }: PerformanceOverviewPanelProps
               <h3 className="text-2xl font-semibold tracking-[-0.03em] text-slate-950">Recent Orders</h3>
               <p className="text-sm text-slate-500">Latest transactions from your store</p>
             </div>
-            <button type="button" className="text-sm font-semibold text-sky-700 transition hover:text-sky-600">
+            <button type="button" onClick={() => router.push("/reports#sales-history")} className="text-sm font-semibold text-sky-700 transition hover:text-sky-600">
               View all
             </button>
           </div>
@@ -457,7 +481,20 @@ export function PerformanceOverviewPanel({ data }: PerformanceOverviewPanelProps
               </thead>
               <tbody>
                 {data.recentOrders.map((order) => (
-                  <tr key={order.id} className="border-t border-slate-200/80 text-slate-700">
+                  <tr
+                    key={order.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`View order ${order.id}`}
+                    onClick={() => openOrderDrawer(order)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        openOrderDrawer(order);
+                      }
+                    }}
+                    className="border-t border-slate-200/80 text-slate-700 transition hover:bg-sky-50/60 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                  >
                     <td className="py-3 pr-4 font-semibold text-slate-900">{order.id}</td>
                     <td className="px-4 py-3">{order.customer}</td>
                     <td className="px-4 py-3 font-semibold text-slate-900">{order.amount}</td>
@@ -492,26 +529,180 @@ export function PerformanceOverviewPanel({ data }: PerformanceOverviewPanelProps
         <article className="rounded-4xl border border-slate-900/8 bg-[rgba(255,255,255,0.82)] p-5 shadow-[0_24px_60px_rgba(148,163,184,0.16)] sm:p-6">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h3 className="text-2xl font-semibold tracking-[-0.03em] text-slate-950">Recent Activity</h3>
-              <p className="text-sm text-slate-500">Latest events from your store</p>
+              <h3 className="text-2xl font-semibold tracking-[-0.03em] text-slate-950">Alerts Center</h3>
+              <p className="text-sm text-slate-500">Low stock, expiry, returns, and zone pressure signals</p>
             </div>
-            <button type="button" className="text-sm font-semibold text-sky-700 transition hover:text-sky-600">
+            <button type="button" onClick={() => router.push("/reports")} className="text-sm font-semibold text-sky-700 transition hover:text-sky-600">
               View all
             </button>
           </div>
 
           <ul className="mt-5 space-y-3">
-            {data.recentActivity.map((item, index) => (
-              <li key={`${item.actor}-${item.time}-${index}`} className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3.5">
-                <p className="text-sm leading-6 text-slate-700">
-                  <span className="font-semibold text-slate-900">{item.actor}</span> {item.action}
-                </p>
-                <p className="mt-1 text-xs font-medium uppercase tracking-[0.14em] text-slate-500">{item.time}</p>
+            {data.alertsCenter.map((alert) => (
+              <li key={alert.id}>
+                <button
+                  type="button"
+                  onClick={() => navigateTo(alert.href)}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 p-3.5 text-left transition hover:border-sky-200 hover:bg-sky-50/60 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-slate-900">{alert.title}</p>
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${
+                        alert.severity === "critical"
+                          ? "bg-rose-100 text-rose-700"
+                          : alert.severity === "warning"
+                          ? "bg-amber-100 text-amber-700"
+                          : "bg-sky-100 text-sky-700"
+                      }`}
+                    >
+                      {alert.severity}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-slate-700">{alert.message}</p>
+                  <p className="mt-1 text-xs font-medium uppercase tracking-[0.14em] text-slate-500">{alert.metric}</p>
+                </button>
               </li>
             ))}
           </ul>
+
+          <div className="mt-5 border-t border-slate-200 pt-4">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <h4 className="text-sm font-semibold uppercase tracking-[0.15em] text-slate-500">Recent Activity</h4>
+            </div>
+            <ul className="space-y-3">
+            {data.recentActivity.map((item, index) => (
+              <li key={`${item.actor}-${item.time}-${index}`}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (item.orderId) {
+                      const matchedOrder = data.recentOrders.find((order) => order.id === item.orderId);
+                      if (matchedOrder) {
+                        openOrderDrawer(matchedOrder);
+                        return;
+                      }
+                    }
+                    navigateTo(item.href);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      if (item.orderId) {
+                        const matchedOrder = data.recentOrders.find((order) => order.id === item.orderId);
+                        if (matchedOrder) {
+                          openOrderDrawer(matchedOrder);
+                          return;
+                        }
+                      }
+                      navigateTo(item.href);
+                    }
+                  }}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 p-3.5 text-left transition hover:border-sky-200 hover:bg-sky-50/60 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                >
+                  <p className="text-sm leading-6 text-slate-700">
+                    <span className="font-semibold text-slate-900">{item.actor}</span> {item.action}
+                  </p>
+                  <p className="mt-1 text-xs font-medium uppercase tracking-[0.14em] text-slate-500">{item.time}</p>
+                </button>
+              </li>
+            ))}
+            </ul>
+          </div>
         </article>
       </div>
+
+      {selectedOrder ? (
+        <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/35 backdrop-blur-[1px]" onClick={closeOrderDrawer}>
+          <aside
+            className="h-full w-full max-w-md border-l border-slate-200 bg-white p-5 shadow-[0_24px_60px_rgba(15,23,42,0.25)] sm:p-6"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Order details"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">Order details</p>
+                <h4 className="mt-2 text-xl font-semibold text-slate-950">{selectedOrder.id}</h4>
+              </div>
+              <button
+                type="button"
+                onClick={closeOrderDrawer}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:bg-slate-50"
+                aria-label="Close order details"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-6 space-y-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-slate-500">Customer</span>
+                <span className="font-semibold text-slate-900">{selectedOrder.customerName}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-slate-500">Amount</span>
+                <span className="font-semibold text-slate-900">{selectedOrder.amount}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-slate-500">Items</span>
+                <span className="font-semibold text-slate-900">{selectedOrder.itemCount}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-slate-500">Payment</span>
+                <span className="font-semibold text-slate-900">{selectedOrder.paymentMethod}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-slate-500">Status</span>
+                <span className="font-semibold text-slate-900">{selectedOrder.status}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-slate-500">Date</span>
+                <span className="font-semibold text-slate-900">{selectedOrder.date}</span>
+              </div>
+            </div>
+
+            {selectedOrder.lineItems.length > 0 ? (
+              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Line items</p>
+                <ul className="mt-3 space-y-2 text-sm">
+                  {selectedOrder.lineItems.map((item, index) => (
+                    <li key={`${item.sku}-${index}`} className="flex items-center justify-between gap-3 text-slate-700">
+                      <span>
+                        {item.name} x{item.quantity}
+                      </span>
+                      <span className="font-semibold text-slate-900">
+                        {new Intl.NumberFormat("en-PH", {
+                          style: "currency",
+                          currency: "PHP",
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        }).format(item.lineTotal)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+              <p className="font-semibold text-slate-900">Need full record details?</p>
+              <p className="mt-1">Open complete sales history in Reports for all transactions, statuses, and timeline context.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  closeOrderDrawer();
+                  router.push("/reports#sales-history");
+                }}
+                className="mt-4 inline-flex items-center rounded-full bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700"
+              >
+                Open sales history
+              </button>
+            </div>
+          </aside>
+        </div>
+      ) : null}
     </section>
   );
 }

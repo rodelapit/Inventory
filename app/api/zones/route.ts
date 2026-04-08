@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createSupabaseAdminClient, createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { endRequestLog, logRequestError, logRequestEvent, startRequestLog } from "@/lib/observability/request";
 
 export async function GET() {
+  const context = startRequestLog("/api/zones", "zones_list");
   if (!isSupabaseConfigured()) {
-    return NextResponse.json({ error: "Supabase not configured", data: [] }, { status: 500 });
+    endRequestLog(context, 500);
+    return NextResponse.json({ error: "Supabase not configured", data: [], requestId: context.requestId }, { status: 500 });
   }
 
   try {
@@ -16,17 +19,23 @@ export async function GET() {
 
     if (error) {
       console.error("API /api/zones select error", error);
-      return NextResponse.json({ error: error.message, data: [] }, { status: 500 });
+      await logRequestError(context, "zones_list_failed", error);
+      endRequestLog(context, 500);
+      return NextResponse.json({ error: error.message, data: [], requestId: context.requestId }, { status: 500 });
     }
 
-    return NextResponse.json({ data: data ?? [] });
+    logRequestEvent(context, "zones_listed", { count: data?.length ?? 0 } as never);
+    endRequestLog(context, 200);
+    return NextResponse.json({ data: data ?? [], requestId: context.requestId });
   } catch (err) {
-    console.error("Unexpected error in /api/zones", err);
-    return NextResponse.json({ error: "Unexpected error", data: [] }, { status: 500 });
+    await logRequestError(context, "zones_list_unexpected", err);
+    endRequestLog(context, 500);
+    return NextResponse.json({ error: "Unexpected error", data: [], requestId: context.requestId }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
+  const context = startRequestLog("/api/zones", "zones_create");
   try {
     const body = await req.json();
 
@@ -42,11 +51,13 @@ export async function POST(req: Request) {
     const color = String(body.color ?? "indigo").trim() || "indigo";
 
     if (!id || !name) {
-      return NextResponse.json({ error: "Zone id and name are required" }, { status: 400 });
+      endRequestLog(context, 400);
+      return NextResponse.json({ error: "Zone id and name are required", requestId: context.requestId }, { status: 400 });
     }
 
     if (!isSupabaseConfigured()) {
-      return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
+      endRequestLog(context, 500);
+      return NextResponse.json({ error: "Supabase not configured", requestId: context.requestId }, { status: 500 });
     }
 
     const supabase = createSupabaseAdminClient();
@@ -73,16 +84,20 @@ export async function POST(req: Request) {
         (typeof error.message === "string" && error.message.toLowerCase().includes("row-level security"));
 
       if (isRlsError) {
+        endRequestLog(context, 403);
         return NextResponse.json(
           {
             error:
               "Insert blocked by Supabase RLS. Add SUPABASE_SERVICE_ROLE_KEY to .env.local or create an INSERT policy for your authenticated role.",
+            requestId: context.requestId,
           },
           { status: 403 },
         );
       }
 
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      await logRequestError(context, "zones_create_failed", error, { id, label, capacity } as never);
+      endRequestLog(context, 500);
+      return NextResponse.json({ error: error.message, requestId: context.requestId }, { status: 500 });
     }
 
     try {
@@ -91,7 +106,9 @@ export async function POST(req: Request) {
       console.error("revalidatePath error for /inventory:", e);
     }
 
-    return NextResponse.json({ data });
+    logRequestEvent(context, "zone_created", { id, capacity, current } as never);
+    endRequestLog(context, 200);
+    return NextResponse.json({ data, requestId: context.requestId });
   } catch (err) {
     console.error("Unexpected error in POST /api/zones", err);
 
@@ -100,11 +117,14 @@ export async function POST(req: Request) {
         {
           error:
             "SUPABASE_SERVICE_ROLE_KEY is not configured. Add it to .env.local so server API routes can write zones.",
+          requestId: context.requestId,
         },
         { status: 500 },
       );
     }
 
-    return NextResponse.json({ error: "Unexpected error" }, { status: 500 });
+    await logRequestError(context, "zones_create_unexpected", err);
+    endRequestLog(context, 500);
+    return NextResponse.json({ error: "Unexpected error", requestId: context.requestId }, { status: 500 });
   }
 }

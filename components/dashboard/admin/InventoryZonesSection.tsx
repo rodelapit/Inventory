@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import { Plus, X } from "lucide-react";
 import { InventoryZoneCard } from "./InventoryZoneCard";
 
@@ -38,6 +38,10 @@ export function InventoryZonesSection({ initialZones }: InventoryZonesSectionPro
   const [form, setForm] = useState<typeof defaultFormState>(defaultFormState);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setZones(initialZones);
+  }, [initialZones]);
 
   const handleOpen = () => {
     setForm(defaultFormState);
