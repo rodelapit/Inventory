@@ -71,6 +71,19 @@ function createMockClient() {
         };
       }
 
+      if (table === "profiles") {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: async () => ({
+                data: { user_id: "user-1" },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+
       if (table === "orders") {
         return {
           insert: () => ({

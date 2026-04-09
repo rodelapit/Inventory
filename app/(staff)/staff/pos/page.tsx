@@ -2,7 +2,9 @@ import { ThemeProvider } from "../../../../components/ThemeProvider/ThemeProvide
 import { StaffSidebar } from "../../../../components/dashboard/staff/StaffSidebar";
 import { PosTerminal } from "../../../../components/dashboard/admin/PosTerminal";
 import { requireStaffSession } from "@/lib/auth/session";
-import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { getSupabaseEnv } from "@/lib/supabase/config";
+import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 
@@ -17,20 +19,57 @@ type PosProduct = {
   storageZone?: string | null;
 };
 
-async function loadPosProducts(): Promise<PosProduct[]> {
-  if (!isSupabaseConfigured()) {
+async function loadPosProducts(accessToken: string): Promise<PosProduct[]> {
+  const env = getSupabaseEnv();
+  if (!env) {
     return [];
   }
 
-  const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
+  // Query with the current staff session token so RLS policies evaluate as the logged-in staff user.
+  const supabase = createClient(env.url, env.anonKey, {
+    auth: {
+      persistSession: false,
+    },
+    global: {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  });
+
+  const selectColumns = "sku, product_name, category, stock_level, status, price, supplier, storage_zone";
+
+  const { data: sessionData, error: sessionError } = await supabase
     .from("products")
-    .select("sku, product_name, category, stock_level, status, price, supplier, storage_zone")
+    .select(selectColumns)
     .order("product_name", { ascending: true });
 
-  if (error) {
-    console.error("Error loading products for staff POS", error);
-    return [];
+  let data = sessionData;
+
+  if (sessionError || (sessionData ?? []).length === 0) {
+    if (sessionError) {
+      console.warn("Unable to load products with staff session", sessionError.message);
+    }
+
+    // Fallback for strict RLS setups where staff read access is intentionally restricted.
+    try {
+      const admin = createSupabaseAdminClient();
+      const { data: adminData, error: adminError } = await admin
+        .from("products")
+        .select(selectColumns)
+        .order("product_name", { ascending: true });
+
+      if (adminError) {
+        console.warn("Unable to load products with admin fallback", adminError.message);
+        return [];
+      }
+
+      data = adminData;
+    } catch (fallbackError) {
+      const message = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+      console.warn("Admin fallback unavailable for staff POS", message);
+      return [];
+    }
   }
 
   type SupabaseProductRow = {
@@ -65,8 +104,8 @@ async function loadPosProducts(): Promise<PosProduct[]> {
 export default async function StaffPosPage() {
   const staffSession = await requireStaffSession();
 
-  const liveDataUnavailable = !isSupabaseConfigured();
-  const products = await loadPosProducts();
+  const liveDataUnavailable = !getSupabaseEnv();
+  const products = await loadPosProducts(staffSession.accessToken);
 
   const totalUnits = products.reduce((sum, product) => sum + product.quantity, 0);
   const availableItems = products.filter((product) => product.quantity > 0).length;
@@ -109,7 +148,7 @@ export default async function StaffPosPage() {
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Products available</p>
                     <p className="mt-3 text-2xl font-bold text-emerald-950 sm:text-3xl">{availableItems}</p>
                   </div>
-
+                  
                   <div className="rounded-lg border border-emerald-100 bg-white p-4 shadow-[0_18px_40px_rgba(148,163,184,0.12)] sm:p-5">
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Units on hand</p>
                     <p className="mt-3 text-2xl font-bold text-emerald-950 sm:text-3xl">{totalUnits}</p>

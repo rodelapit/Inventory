@@ -111,6 +111,49 @@ function normalizePaymentMethod(value: string): PaymentMethod {
   return "other";
 }
 
+function toErrorMessage(error: unknown): string {
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string") return message;
+  }
+  return String(error ?? "Unknown error");
+}
+
+function isTransientFetchFailure(error: unknown): boolean {
+  const message = toErrorMessage(error).toLowerCase();
+  return (
+    message.includes("fetch failed") ||
+    message.includes("network") ||
+    message.includes("connection") ||
+    message.includes("timed out")
+  );
+}
+
+async function withSupabaseRetry<T>(operation: () => PromiseLike<T>, attempts = 2): Promise<T> {
+  let lastResult: T | null = null;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      const result = await operation();
+      lastResult = result;
+      const resultError =
+        result && typeof result === "object" && "error" in (result as Record<string, unknown>)
+          ? (result as { error?: unknown }).error
+          : null;
+
+      if (!resultError || !isTransientFetchFailure(resultError) || attempt === attempts) {
+        return result;
+      }
+    } catch (error) {
+      if (!isTransientFetchFailure(error) || attempt === attempts) {
+        throw error;
+      }
+    }
+  }
+
+  return lastResult as T;
+}
+
 async function insertOrder(
   supabase: ReturnType<typeof createSupabaseAdminClient>,
   payload: OrderInsertPayload,
@@ -233,14 +276,41 @@ export async function POST(req: Request) {
     const skus = Array.from(mergedCart.keys());
     const supabase = createSupabaseAdminClient();
 
-    const { data: productRows, error: productError } = await supabase
-      .from("products")
-      .select("id, sku, product_name, stock_level, price, status")
-      .in("sku", skus);
+    // Keep audit writes resilient: only persist actor_user_id/cashier_user_id if a matching profile exists.
+    let actorUserIdForWrite: string | null = cashierUserId;
+    if (actorUserIdForWrite) {
+      const { data: actorProfile, error: actorProfileError } = await withSupabaseRetry(() =>
+        supabase
+          .from("profiles")
+          .select("user_id")
+          .eq("user_id", actorUserIdForWrite)
+          .maybeSingle(),
+      );
+
+      if (actorProfileError) {
+        console.error("POS actor profile lookup failed", actorProfileError);
+        logRequestEvent(logContext, "actor_profile_lookup_failed", {
+          actorUserId: actorUserIdForWrite,
+        } as never);
+        actorUserIdForWrite = null;
+      } else if (!actorProfile?.user_id) {
+        logRequestEvent(logContext, "actor_profile_missing", {
+          actorUserId: actorUserIdForWrite,
+        } as never);
+        actorUserIdForWrite = null;
+      }
+    }
+
+    const { data: productRows, error: productError } = await withSupabaseRetry(() =>
+      supabase
+        .from("products")
+        .select("id, sku, product_name, stock_level, price, status")
+        .in("sku", skus),
+    );
 
     if (productError) {
       console.error("POS checkout product lookup failed", productError);
-      return fail(500, productError.message, "product_lookup_failed", { skus }, productError);
+      return fail(500, toErrorMessage(productError), "product_lookup_failed", { skus }, productError);
     }
 
     const products = (productRows ?? []) as ProductRow[];
@@ -280,18 +350,20 @@ export async function POST(req: Request) {
       originalStockLevels.set(sku, currentStock);
 
       const nextStock = action === "checkout" ? currentStock - quantity : currentStock + quantity;
-      const updateResult = await supabase
-        .from("products")
-        .update({
-          stock_level: nextStock,
-          status: normalizeStockStatus(nextStock),
-        })
-        .eq("sku", sku);
+      const updateResult = await withSupabaseRetry(() =>
+        supabase
+          .from("products")
+          .update({
+            stock_level: nextStock,
+            status: normalizeStockStatus(nextStock),
+          })
+          .eq("sku", sku),
+      );
 
       if (updateResult.error) {
         await rollbackStockLevels(supabase, originalStockLevels);
         console.error(`POS checkout stock update failed for ${sku}`, updateResult.error);
-        return fail(500, updateResult.error.message, "stock_update_failed", { sku }, updateResult.error);
+        return fail(500, toErrorMessage(updateResult.error), "stock_update_failed", { sku }, updateResult.error);
       }
 
       const lineTotal = Number((unitPrice * quantity).toFixed(2));
@@ -369,38 +441,40 @@ export async function POST(req: Request) {
       };
     });
 
-    const { error: orderItemsError } = await supabase.from("order_items").insert(orderItemsPayload);
+    const { error: orderItemsError } = await withSupabaseRetry(() => supabase.from("order_items").insert(orderItemsPayload));
     if (orderItemsError) {
       await rollbackStockLevels(supabase, originalStockLevels);
       await cleanupOrderArtifacts(supabase, order.id);
       console.error("POS checkout order items insert failed", orderItemsError);
-      return fail(500, orderItemsError.message, "order_items_insert_failed", { orderId: order.id }, orderItemsError);
+      return fail(500, toErrorMessage(orderItemsError), "order_items_insert_failed", { orderId: order.id }, orderItemsError);
     }
 
-    const { error: stockMovementError } = await supabase.from("stock_movements").insert(
-      movementPayload.map((movement) => ({
-        product_id: movement.productId,
-        sku: movement.sku,
-        movement_type: movement.movementType,
-        qty_delta: movement.qtyDelta,
-        before_qty: movement.beforeQty,
-        after_qty: movement.afterQty,
-        source_order_id: order.id,
-        reason:
-          action === "checkout"
-            ? "POS checkout"
-            : action === "refund"
-            ? "POS refund"
-            : "POS void",
-        actor_user_id: cashierUserId,
-      })),
+    const { error: stockMovementError } = await withSupabaseRetry(() =>
+      supabase.from("stock_movements").insert(
+        movementPayload.map((movement) => ({
+          product_id: movement.productId,
+          sku: movement.sku,
+          movement_type: movement.movementType,
+          qty_delta: movement.qtyDelta,
+          before_qty: movement.beforeQty,
+          after_qty: movement.afterQty,
+          source_order_id: order.id,
+          reason:
+            action === "checkout"
+              ? "POS checkout"
+              : action === "refund"
+              ? "POS refund"
+              : "POS void",
+          actor_user_id: actorUserIdForWrite,
+        })),
+      ),
     );
 
     if (stockMovementError) {
       await rollbackStockLevels(supabase, originalStockLevels);
       await cleanupOrderArtifacts(supabase, order.id);
       console.error("POS checkout stock movement insert failed", stockMovementError);
-      return fail(500, stockMovementError.message, "stock_movements_insert_failed", { orderId: order.id }, stockMovementError);
+      return fail(500, toErrorMessage(stockMovementError), "stock_movements_insert_failed", { orderId: order.id }, stockMovementError);
     }
 
     const paymentInsertPayload = {
@@ -409,15 +483,15 @@ export async function POST(req: Request) {
       amount: finalTotal,
       reference_no: sourceOrderNumber || promoCode,
       paid_at: completedAt,
-      cashier_user_id: cashierUserId,
+      cashier_user_id: actorUserIdForWrite,
     };
 
-    const { error: paymentInsertError } = await supabase.from("payments").insert(paymentInsertPayload);
+    const { error: paymentInsertError } = await withSupabaseRetry(() => supabase.from("payments").insert(paymentInsertPayload));
     if (paymentInsertError) {
       await rollbackStockLevels(supabase, originalStockLevels);
       await cleanupOrderArtifacts(supabase, order.id);
       console.error("POS checkout payment insert failed", paymentInsertError);
-      return fail(500, paymentInsertError.message, "payments_insert_failed", { orderId: order.id }, paymentInsertError);
+      return fail(500, toErrorMessage(paymentInsertError), "payments_insert_failed", { orderId: order.id }, paymentInsertError);
     }
 
     const orderFetchResult = await fetchOrderByNumber(supabase, orderNumber);
@@ -432,19 +506,23 @@ export async function POST(req: Request) {
     const persistedOrder = orderFetchResult.data ?? order;
 
     if (action === "checkout" && promoCode) {
-      const { data: promoRow } = await supabase
-        .from("promotions")
-        .select("times_used")
-        .eq("code", promoCode)
-        .eq("active", true)
-        .maybeSingle();
+      const { data: promoRow } = await withSupabaseRetry(() =>
+        supabase
+          .from("promotions")
+          .select("times_used")
+          .eq("code", promoCode)
+          .eq("active", true)
+          .maybeSingle(),
+      );
 
       const nextTimesUsed = Number(promoRow?.times_used ?? 0) + 1;
-      await supabase
-        .from("promotions")
-        .update({ times_used: nextTimesUsed })
-        .eq("code", promoCode)
-        .eq("active", true);
+      await withSupabaseRetry(() =>
+        supabase
+          .from("promotions")
+          .update({ times_used: nextTimesUsed })
+          .eq("code", promoCode)
+          .eq("active", true),
+      );
     }
 
     if (action !== "checkout" && sourceOrderNumber) {
@@ -457,6 +535,10 @@ export async function POST(req: Request) {
       revalidatePath("/products");
       revalidatePath("/reports");
       revalidatePath("/pos");
+      revalidatePath("/staff");
+      revalidatePath("/staff/pos");
+      revalidatePath("/staff/products");
+      revalidatePath("/staff/inventory");
     } catch (error) {
       console.error("POS checkout revalidation failed", error);
     }
@@ -494,6 +576,18 @@ export async function POST(req: Request) {
       },
     });
   } catch (error) {
+    if (error instanceof Error && error.message.includes("SUPABASE_SERVICE_ROLE_KEY")) {
+      await logRequestError(logContext, "pos_service_key_missing", error);
+      endRequestLog(logContext, 500);
+      return NextResponse.json(
+        {
+          error: "POS write operations require SUPABASE_SERVICE_ROLE_KEY in environment variables.",
+          requestId: logContext.requestId,
+        },
+        { status: 500 },
+      );
+    }
+
     console.error("Unexpected POS checkout error", error);
     await logRequestError(logContext, "pos_unexpected_error", error);
     endRequestLog(logContext, 500);

@@ -14,6 +14,28 @@ type StaffHeroSectionLiveProps = {
   initialProductFeed: ProductFeedItem[];
 };
 
+type ProductRealtimeRow = {
+  sku: string;
+  product_name: string;
+  stock_level?: number | null;
+  expiration?: string | null;
+  storage_zone?: string | null;
+};
+
+type ZoneRealtimeRow = {
+  id: string;
+  label?: string | null;
+  name?: string | null;
+  current?: number | null;
+  capacity?: number | null;
+};
+
+type OrderRealtimeRow = {
+  order_status?: string | null;
+  order_date?: string | null;
+  created_at?: string | null;
+};
+
 function daysUntil(date: Date): number {
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -74,29 +96,101 @@ function buildActiveAlerts(productFeed: ProductFeedItem[]): ActiveAlert[] {
   return alerts;
 }
 
-function buildZoneCards(
-  products: ProductFeedItem[],
-): ZoneCard[] {
-  const zoneMeta: Record<string, { zone: string; name: string }> = {
-    A: { zone: "ZONE A", name: "Ambient Storage" },
-    B: { zone: "ZONE B", name: "Cold Storage" },
-    Q: { zone: "ZONE Q", name: "Quarantined Stock" },
-    C: { zone: "ZONE C", name: "Frozen Storage" },
-    D: { zone: "ZONE D", name: "Dry Storage" },
-    E: { zone: "ZONE E", name: "Receiving Area" },
-  };
-
+function buildZoneCards(products: ProductRealtimeRow[], zones: ZoneRealtimeRow[]): ZoneCard[] {
   const zoneTotals = new Map<string, number>();
-  
-  // This is a simplified calculation - in reality we'd need the storage_zone from products table
-  // For now, we'll just distribute based on stock level
+
   for (const p of products) {
-    // We can't determine zone from productFeed, so this is a limitation
-    // A better approach would be to fetch full product data with zones
+    const key = String(p.storage_zone ?? "").trim().toUpperCase() || "UNASSIGNED";
+    zoneTotals.set(key, (zoneTotals.get(key) ?? 0) + Number(p.stock_level ?? 0));
   }
 
-  // Return initial zone cards if we can't recalculate
-  return [];
+  const mappedZones = zones.map((zone) => {
+    const id = String(zone.id ?? "").trim().toUpperCase();
+    const label = String(zone.label ?? `ZONE ${id}`).trim() || `ZONE ${id}`;
+    const name = String(zone.name ?? `Storage Zone ${id}`).trim() || `Storage Zone ${id}`;
+    const units = zoneTotals.get(id) ?? Number(zone.current ?? 0);
+    const capacity = Math.max(1, Number(zone.capacity ?? 1));
+    const utilization = Math.round((units / capacity) * 100);
+
+    return {
+      zone: label,
+      name,
+      units,
+      trend: `${utilization}% utilization`,
+      trendUp: utilization < 90,
+    };
+  });
+
+  const unassignedUnits = zoneTotals.get("UNASSIGNED") ?? 0;
+  if (unassignedUnits > 0) {
+    mappedZones.push({
+      zone: "UNASSIGNED",
+      name: "Unassigned Products",
+      units: unassignedUnits,
+      trend: "Needs zone assignment",
+      trendUp: false,
+    });
+  }
+
+  return mappedZones;
+}
+
+function normalizeStatus(value?: string | null): "Delivered" | "Pending" | "Voided" | "Refunded" {
+  const status = String(value ?? "").toLowerCase();
+  if (status.includes("void") || status.includes("cancel")) return "Voided";
+  if (status.includes("refund")) return "Refunded";
+  if (status.includes("deliver") || status.includes("complete")) return "Delivered";
+  return "Pending";
+}
+
+function buildOperationalAlerts(
+  productFeed: ProductFeedItem[],
+  zoneCards: ZoneCard[],
+  recentOrders: OrderRealtimeRow[],
+): ActiveAlert[] {
+  const alerts = buildActiveAlerts(productFeed);
+
+  const overloadedZone = zoneCards
+    .map((zone) => {
+      const value = Number(zone.trend.replace(/[^0-9]/g, "") || "0");
+      return { zone, value };
+    })
+    .filter((entry) => entry.value >= 90)
+    .sort((a, b) => b.value - a.value)[0];
+
+  if (overloadedZone) {
+    alerts.push({
+      title: "Zone overflow risk",
+      message: `${overloadedZone.zone.zone} is at ${overloadedZone.value}% utilization.`,
+      age: "Live update",
+      type: overloadedZone.value >= 100 ? "error" : "warning",
+    });
+  }
+
+  const window24h = Date.now() - 24 * 60 * 60 * 1000;
+  const recent = recentOrders.filter((order) => {
+    const date = new Date(order.order_date ?? order.created_at ?? "");
+    return !Number.isNaN(date.getTime()) && date.getTime() >= window24h;
+  });
+
+  const reversals = recent.filter((order) => {
+    const status = normalizeStatus(order.order_status);
+    return status === "Refunded" || status === "Voided";
+  }).length;
+
+  if (recent.length > 0) {
+    const ratio = reversals / recent.length;
+    if (ratio >= 0.2 && reversals >= 2) {
+      alerts.push({
+        title: "Refund spike",
+        message: `${reversals} reversal transactions in the last 24h (${Math.round(ratio * 100)}%).`,
+        age: "Live update",
+        type: ratio >= 0.35 ? "error" : "warning",
+      });
+    }
+  }
+
+  return alerts.slice(0, 5);
 }
 
 export function StaffHeroSectionLive({
@@ -108,19 +202,58 @@ export function StaffHeroSectionLive({
   initialProductFeed,
 }: StaffHeroSectionLiveProps) {
   const [productFeed, setProductFeed] = useState<ProductFeedItem[]>(initialProductFeed);
+  const [productRows, setProductRows] = useState<ProductRealtimeRow[]>([]);
+  const [zoneCards, setZoneCards] = useState<ZoneCard[]>(initialZoneCards);
   const [activeAlerts, setActiveAlerts] = useState<ActiveAlert[]>(initialAlerts);
+  const [recentOrders, setRecentOrders] = useState<OrderRealtimeRow[]>([]);
 
   useEffect(() => {
-    setActiveAlerts(buildActiveAlerts(productFeed));
-  }, [productFeed]);
+    setActiveAlerts(buildOperationalAlerts(productFeed, zoneCards, recentOrders));
+  }, [productFeed, zoneCards, recentOrders]);
 
   useEffect(() => {
     try {
       const supabase = createSupabaseBrowserClient();
 
-      // Subscribe to changes on the products table
-      const subscription = supabase
-        .channel("products-changes-hero")
+      const refreshData = async () => {
+        const [{ data: productsData }, { data: zonesData }, { data: ordersData }] = await Promise.all([
+          supabase.from("products").select("sku, product_name, stock_level, expiration, storage_zone"),
+          supabase.from("zones").select("id, label, name, current, capacity").order("id", { ascending: true }),
+          supabase
+            .from("orders")
+            .select("order_status, order_date, created_at")
+            .order("order_date", { ascending: false })
+            .limit(100),
+        ]);
+
+        const products = (productsData ?? []) as ProductRealtimeRow[];
+        const zones = (zonesData ?? []) as ZoneRealtimeRow[];
+        const orders = (ordersData ?? []) as OrderRealtimeRow[];
+
+        setProductRows(products);
+        setRecentOrders(orders);
+        setZoneCards(buildZoneCards(products, zones));
+
+        setProductFeed(
+          products.map((product) => ({
+            sku: product.sku,
+            productName: product.product_name,
+            stockLevel: Number(product.stock_level ?? 0),
+            expiration: product.expiration ? new Date(product.expiration).toLocaleDateString() : "",
+            status:
+              Number(product.stock_level ?? 0) <= 0
+                ? "Critical"
+                : Number(product.stock_level ?? 0) <= 10
+                ? "Low"
+                : "In Stock",
+          })),
+        );
+      };
+
+      void refreshData();
+
+      const channel = supabase
+        .channel("staff-hero-live")
         .on(
           "postgres_changes",
           {
@@ -128,69 +261,22 @@ export function StaffHeroSectionLive({
             schema: "public",
             table: "products",
           },
-          (payload) => {
-            if (payload.eventType === "INSERT") {
-              const newProduct = payload.new as {
-                sku: string;
-                product_name: string;
-                stock_level?: number | null;
-                expiration?: string | null;
-              };
-
-              const newFeedItem: ProductFeedItem = {
-                sku: newProduct.sku,
-                productName: newProduct.product_name,
-                stockLevel: newProduct.stock_level ?? 0,
-                expiration: newProduct.expiration
-                  ? new Date(newProduct.expiration).toLocaleDateString()
-                  : "",
-                status:
-                  (newProduct.stock_level ?? 0) === 0
-                    ? "Critical"
-                    : (newProduct.stock_level ?? 0) <= 10
-                    ? "Low"
-                    : "In Stock",
-              };
-
-              setProductFeed((prev) => [newFeedItem, ...prev]);
-            } else if (payload.eventType === "UPDATE") {
-              const updatedProduct = payload.new as {
-                sku: string;
-                product_name: string;
-                stock_level?: number | null;
-                expiration?: string | null;
-              };
-
-              setProductFeed((prev) =>
-                prev.map((item) =>
-                  item.sku === updatedProduct.sku
-                    ? {
-                        ...item,
-                        productName: updatedProduct.product_name,
-                        stockLevel: updatedProduct.stock_level ?? 0,
-                        expiration: updatedProduct.expiration
-                          ? new Date(updatedProduct.expiration).toLocaleDateString()
-                          : "",
-                        status:
-                          (updatedProduct.stock_level ?? 0) === 0
-                            ? "Critical"
-                            : (updatedProduct.stock_level ?? 0) <= 10
-                            ? "Low"
-                            : "In Stock",
-                      }
-                    : item
-                )
-              );
-            } else if (payload.eventType === "DELETE") {
-              const deletedProduct = payload.old as { sku: string };
-              setProductFeed((prev) => prev.filter((item) => item.sku !== deletedProduct.sku));
-            }
-          }
+          () => void refreshData(),
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "zones" },
+          () => void refreshData(),
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "orders" },
+          () => void refreshData(),
         )
         .subscribe();
 
       return () => {
-        subscription.unsubscribe();
+        channel.unsubscribe();
       };
     } catch (error) {
       console.error("Failed to set up realtime subscription:", error);
@@ -202,7 +288,7 @@ export function StaffHeroSectionLive({
       systemStatusTitle={systemStatusTitle}
       systemStatusMessage={systemStatusMessage}
       statCards={statCards}
-      zoneCards={initialZoneCards}
+      zoneCards={zoneCards}
       activeAlerts={activeAlerts}
     />
   );

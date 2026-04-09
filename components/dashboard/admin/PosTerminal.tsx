@@ -38,6 +38,7 @@ type CheckoutResponse = {
   taxAmount?: number;
   completedAt: string;
   totalAmount: number;
+  requestId?: string;
   itemCount: number;
   items: Array<{
     sku: string;
@@ -173,7 +174,9 @@ export function PosTerminal({ initialProducts, actorUserId }: PosTerminalProps) 
 
       const json = await res.json();
       if (!res.ok || !json?.data) {
-        setActionError(json?.error || "Unable to complete sale.");
+        const requestId = String(json?.requestId ?? "").trim();
+        const reason = String(json?.error ?? "Unable to complete sale.");
+        setActionError(requestId ? `${reason} (Ref: ${requestId})` : reason);
         return;
       }
 
@@ -231,7 +234,9 @@ export function PosTerminal({ initialProducts, actorUserId }: PosTerminalProps) 
 
       const json = await res.json();
       if (!res.ok || !json?.data) {
-        setActionError(json?.error || `Unable to ${action} sale.`);
+        const requestId = String(json?.requestId ?? "").trim();
+        const reason = String(json?.error ?? `Unable to ${action} sale.`);
+        setActionError(requestId ? `${reason} (Ref: ${requestId})` : reason);
         return;
       }
 

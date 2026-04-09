@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Home, Package, ClipboardList, ReceiptText } from "lucide-react";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const staffNavItems = [
   { label: "Staff Home", href: "/staff", icon: Home },
@@ -31,39 +30,6 @@ export function StaffSidebar() {
 
     const timeoutId = setTimeout(prefetchAll, 200);
     return () => clearTimeout(timeoutId);
-  }, [router]);
-
-  useEffect(() => {
-    try {
-      const supabase = createSupabaseBrowserClient();
-      let refreshTimer: ReturnType<typeof setTimeout> | null = null;
-
-      const scheduleRefresh = () => {
-        if (refreshTimer) {
-          clearTimeout(refreshTimer);
-        }
-
-        refreshTimer = setTimeout(() => {
-          router.refresh();
-        }, 350);
-      };
-
-      const channel = supabase
-        .channel("staff-global-realtime")
-        .on("postgres_changes", { event: "*", schema: "public", table: "products" }, scheduleRefresh)
-        .on("postgres_changes", { event: "*", schema: "public", table: "zones" }, scheduleRefresh)
-        .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, scheduleRefresh)
-        .subscribe();
-
-      return () => {
-        if (refreshTimer) {
-          clearTimeout(refreshTimer);
-        }
-        channel.unsubscribe();
-      };
-    } catch {
-      return;
-    }
   }, [router]);
 
   const prefetchRoute = (href: string) => {

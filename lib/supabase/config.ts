@@ -16,7 +16,7 @@ export function getSupabaseEnv(): SupabaseEnv | null {
 
   return { url, anonKey };
 }
-
+  
 export function isSupabaseConfigured(): boolean {
   return getSupabaseEnv() !== null;
 }

@@ -1,3 +1,4 @@
+import { useRouter } from "next/navigation";
 import type { ActiveAlert, ZoneCard, StatCard } from "@/data/dashboard";
 import { StatCard as StatCardComponent } from "../shared/StatCard";
 import { AlertCard } from "../shared/AlertCard";
@@ -17,6 +18,7 @@ export function StaffHeroSection({
   zoneCards,
   activeAlerts,
 }: StaffHeroSectionProps) {
+  const router = useRouter();
   const totalCurrent = zoneCards.reduce((s, z) => s + z.units, 0);
 
   return (
@@ -116,7 +118,11 @@ export function StaffHeroSection({
         <aside className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold text-emerald-950 sm:text-2xl">Expiry &amp; Low Stock</h2>
-            <button className="text-sm font-semibold text-emerald-700 hover:text-emerald-600">
+            <button
+              type="button"
+              onClick={() => router.push("/staff/inventory")}
+              className="text-sm font-semibold text-emerald-700 hover:text-emerald-600"
+            >
               View details 
               <span aria-hidden>→</span>
             </button>
