@@ -17,9 +17,25 @@ type ProductRow = {
   storageZone?: string | null;
 };
 
-async function getProducts(): Promise<ProductRow[]> {
+type ProductLoadResult = {
+  rows: ProductRow[];
+  error: string | null;
+};
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object") {
+    const maybeError = error as { message?: unknown; details?: unknown };
+    const message = typeof maybeError.message === "string" ? maybeError.message : "";
+    const details = typeof maybeError.details === "string" ? maybeError.details : "";
+    return [message, details].filter(Boolean).join(" - ") || "Unknown error";
+  }
+  return String(error ?? "Unknown error");
+}
+
+async function getProducts(): Promise<ProductLoadResult> {
   if (!isSupabaseConfigured()) {
-    return [];
+    return { rows: [], error: "Supabase is not configured." };
   }
 
   const supabase = createSupabaseServerClient();
@@ -29,12 +45,13 @@ async function getProducts(): Promise<ProductRow[]> {
     .order("product_name", { ascending: true });
 
   if (error) {
-    console.error("Error loading products for catalog", error);
-    return [];
+    // Connectivity issues are surfaced to the page banner below; avoid throwing noisy dev overlays.
+    console.warn("Unable to load products for catalog", getErrorMessage(error));
+    return { rows: [], error: getErrorMessage(error) };
   }
 
   if (!data) {
-    return [];
+    return { rows: [], error: null };
   }
 
   type SupabaseProductRow = {
@@ -48,7 +65,7 @@ async function getProducts(): Promise<ProductRow[]> {
     storage_zone?: string | null;
   };
 
-  return (data as SupabaseProductRow[]).map((p) => {
+  const rows = (data as SupabaseProductRow[]).map((p) => {
     const rawStatus = p.status ?? "In Stock";
     const status: ProductRow["status"] =
       rawStatus === "Low" || rawStatus === "Critical" ? rawStatus : "In Stock";
@@ -64,11 +81,15 @@ async function getProducts(): Promise<ProductRow[]> {
       storageZone: p.storage_zone ?? null,
     };
   });
+
+  return { rows, error: null };
 }
 
 export default async function ProductsPage() {
   const liveDataUnavailable = !isSupabaseConfigured();
-  const productRows = await getProducts();
+  const productResult = await getProducts();
+  const productRows = productResult.rows;
+  const productLoadError = productResult.error;
   const totalProducts = productRows.length;
   const lowStockCount = productRows.filter((p) => p.status === "Low" || p.status === "Critical").length;
   const categoriesCount = new Set(productRows.map((p) => p.category).filter(Boolean)).size;
@@ -103,6 +124,11 @@ export default async function ProductsPage() {
                     Live data unavailable. Supabase is not configured, so products cannot be loaded.
                   </div>
                 ) : null}
+                {!liveDataUnavailable && productLoadError ? (
+                  <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+                    Unable to load products from Supabase: {productLoadError}
+                  </div>
+                ) : null}
                 <div className="grid gap-4 md:grid-cols-4">
                   <div className="rounded-3xl border border-slate-900/8 bg-white/90 p-4 shadow-[0_18px_40px_rgba(148,163,184,0.18)]">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -133,7 +159,7 @@ export default async function ProductsPage() {
                 </div>
 
                 <section className="rounded-3xl border border-slate-900/8 bg-white/95 pb-4 pt-3.5 shadow-[0_22px_55px_rgba(148,163,184,0.2)]">
-                  <ProductsClient initialRows={productRows} />
+                  <ProductsClient initialRows={productRows} initialLoadError={productLoadError} />
                 </section>
               </div>
             </div>

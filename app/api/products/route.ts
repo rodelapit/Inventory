@@ -14,6 +14,23 @@ type ProductSelectRow = {
   storage_zone?: string | null;
 };
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object") {
+    const maybeError = error as { message?: unknown };
+    if (typeof maybeError.message === "string" && maybeError.message.trim().length > 0) {
+      return maybeError.message;
+    }
+  }
+  return String(error ?? "Unknown error");
+}
+
+function getSupabaseErrorCode(error: unknown): string | null {
+  if (!error || typeof error !== "object") return null;
+  const maybeCode = (error as { code?: unknown }).code;
+  return typeof maybeCode === "string" ? maybeCode : null;
+}
+
 export async function GET() {
   const context = startRequestLog("/api/products", "products_list");
 
@@ -23,16 +40,39 @@ export async function GET() {
   }
 
   try {
-    const supabase = createSupabaseServerClient();
+    // Prefer service-role reads for admin dashboards; fallback to server client when key is absent.
+    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY
+      ? createSupabaseAdminClient()
+      : createSupabaseServerClient();
+
     const { data, error } = await supabase
       .from("products")
       .select("sku, product_name, category, stock_level, status, price, supplier, storage_zone")
       .order("product_name", { ascending: true });
 
     if (error) {
-      await logRequestError(context, "products_list_failed", error);
-      endRequestLog(context, 500);
-      return NextResponse.json({ error: error.message, data: [], requestId: context.requestId }, { status: 500 });
+      const code = getSupabaseErrorCode(error);
+      const message = getErrorMessage(error);
+      const isRlsError = code === "42501" || message.toLowerCase().includes("row-level security");
+      const isMissingTable = code === "42P01";
+      const status = isRlsError ? 403 : 500;
+
+      await logRequestError(context, "products_list_failed", error, {
+        code: code ?? "unknown",
+        missingTable: isMissingTable,
+        rlsBlocked: isRlsError,
+      });
+      endRequestLog(context, status);
+
+      return NextResponse.json(
+        {
+          error: message,
+          code,
+          data: [],
+          requestId: context.requestId,
+        },
+        { status },
+      );
     }
     logRequestEvent(context, "products_listed", { count: data?.length ?? 0 } as never);
     endRequestLog(context, 200);

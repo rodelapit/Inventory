@@ -14,10 +14,17 @@ type ProductRow = {
   storageZone?: string | null;
 };
 
-export default function ProductsClient({ initialRows }: { initialRows: ProductRow[] }) {
+export default function ProductsClient({
+  initialRows,
+  initialLoadError = null,
+}: {
+  initialRows: ProductRow[];
+  initialLoadError?: string | null;
+}) {
   const searchParams = useSearchParams();
   const searchFromUrl = searchParams.get("q") ?? "";
   const [rows, setRows] = useState<ProductRow[]>(initialRows ?? []);
+  const [loadError, setLoadError] = useState<string | null>(initialLoadError);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -41,11 +48,26 @@ export default function ProductsClient({ initialRows }: { initialRows: ProductRo
       try {
         const res = await fetch("/api/products", { cache: "no-store" });
         const json = await res.json();
-        if (mounted && json && Array.isArray(json.data)) {
+        if (!mounted) return;
+
+        if (!res.ok) {
+          const message =
+            typeof json?.error === "string" && json.error.trim().length > 0
+              ? json.error
+              : `Request failed with status ${res.status}`;
+          setLoadError(message);
+          return;
+        }
+
+        if (json && Array.isArray(json.data)) {
           setRows(json.data);
+          setLoadError(null);
         }
       } catch (err) {
         console.error("Failed to fetch products client-side", err);
+        if (mounted) {
+          setLoadError("Network error while loading products. Check your Supabase URL and DNS connectivity.");
+        }
       } finally {
         if (mounted) setLoading(false);
       }
@@ -320,6 +342,11 @@ export default function ProductsClient({ initialRows }: { initialRows: ProductRo
       )}
 
       <div className="min-h-0 overflow-x-auto px-2 sm:px-4">
+        {loadError ? (
+          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800 sm:text-sm">
+            Products cannot be loaded right now: {loadError}
+          </div>
+        ) : null}
         <table className="mt-2 w-full min-w-180 text-left text-xs text-slate-700 sm:text-sm">
           <thead className="border-y border-slate-200/70 bg-white/80 text-[11px] uppercase tracking-[0.15em] text-slate-500 shadow-[inset_0_-1px_0_rgba(15,23,42,0.04)] sm:text-xs">
             <tr>

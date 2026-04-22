@@ -60,7 +60,7 @@ async function loadPosProducts(accessToken: string): Promise<PosProduct[]> {
         .order("product_name", { ascending: true });
 
       if (adminError) {
-        console.warn("Unable to load products with admin fallback", adminError.message);
+        console.warn  ("Unable to load products with admin fallback", adminError.message);
         return [];
       }
 
