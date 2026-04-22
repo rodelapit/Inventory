@@ -93,7 +93,7 @@ export function InventoryStatsLive({ initialStats }: InventoryStatsLiveProps) {
         subscription.unsubscribe();
       };
     } catch (error) {
-      console.error("Failed to set up realtime subscription for inventory stats:", error);
+      console.warn("Failed to set up realtime subscription for inventory stats:", error);
     }
   }, []);
 

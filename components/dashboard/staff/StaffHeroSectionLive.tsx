@@ -279,7 +279,7 @@ export function StaffHeroSectionLive({
         channel.unsubscribe();
       };
     } catch (error) {
-      console.error("Failed to set up realtime subscription:", error);
+      console.warn("Failed to set up realtime subscription:", error);
     }
   }, []);
 

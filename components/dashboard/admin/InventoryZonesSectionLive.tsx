@@ -88,7 +88,7 @@ export function InventoryZonesSectionLive({
         subscription.unsubscribe();
       };
     } catch (error) {
-      console.error("Failed to set up realtime subscription for inventory zones:", error);
+      console.warn("Failed to set up realtime subscription for inventory zones:", error);
     }
   }, []);
 

@@ -61,7 +61,7 @@ export default function ProductsClient({
           setLoadError(null);
         }
       } catch (err) {
-        console.error("Failed to fetch products client-side", err);
+        console.warn("Failed to fetch products client-side", err);
         if (mounted) {
           setLoadError("Network error while loading products. Check your Supabase URL and DNS connectivity.");
         }
@@ -108,11 +108,11 @@ export default function ProductsClient({
         setForm({ name: "", category: "", quantity: "", price: "", status: "In Stock", supplier: "", storage_zone: "" });
         setShowModal(false);
       } else {
-        console.error("Insert failed", json);
+        console.warn("Insert failed", json);
         alert(parseApiError(res, json, "Failed to add product"));
       }
     } catch (err) {
-      console.error("Failed to POST /api/products", err);
+      console.warn("Failed to POST /api/products", err);
       alert("Failed to add product");
     } finally {
       setSubmitting(false);

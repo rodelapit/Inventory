@@ -201,7 +201,7 @@ export function PosTerminal({ initialProducts, actorUserId }: PosTerminalProps) 
         }),
       );
     } catch (error) {
-      console.error("POS checkout failed", error);
+      console.warn("POS checkout failed", error);
       setActionError("Unable to complete sale right now.");
     } finally {
       setIsSubmitting(false);
@@ -258,7 +258,7 @@ export function PosTerminal({ initialProducts, actorUserId }: PosTerminalProps) 
         }),
       );
     } catch (error) {
-      console.error(`POS ${action} failed`, error);
+      console.warn(`POS ${action} failed`, error);
       setActionError(`Unable to ${action} sale right now.`);
     } finally {
       setIsSubmitting(false);

@@ -74,7 +74,7 @@ export function ProductManagementSectionLive({
         );
       }
     } catch (error) {
-      console.error("Failed to adjust stock", error);
+      console.warn("Failed to adjust stock", error);
       setActionError("Failed to update stock level.");
     } finally {
       setPendingSku(null);
@@ -150,7 +150,7 @@ export function ProductManagementSectionLive({
         subscription.unsubscribe();
       };
     } catch (error) {
-      console.error("Failed to set up realtime subscription:", error);
+      console.warn("Failed to set up realtime subscription:", error);
     }
   }, []);
 
