@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { parseApiError } from "@/lib/api/client-error";
 
 type ProductRow = {
   sku: string;
@@ -51,11 +52,7 @@ export default function ProductsClient({
         if (!mounted) return;
 
         if (!res.ok) {
-          const message =
-            typeof json?.error === "string" && json.error.trim().length > 0
-              ? json.error
-              : `Request failed with status ${res.status}`;
-          setLoadError(message);
+          setLoadError(parseApiError(res, json, "Request failed"));
           return;
         }
 
@@ -112,7 +109,7 @@ export default function ProductsClient({
         setShowModal(false);
       } else {
         console.error("Insert failed", json);
-        alert(json.error || "Failed to add product");
+        alert(parseApiError(res, json, "Failed to add product"));
       }
     } catch (err) {
       console.error("Failed to POST /api/products", err);

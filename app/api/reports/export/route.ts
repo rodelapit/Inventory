@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { apiError } from "@/lib/api/response";
 
 type ExportProductRow = {
   sku: string;
@@ -69,9 +70,10 @@ function daysUntil(date: Date): number {
 }
 
 export async function GET() {
+  const requestId = crypto.randomUUID();
   try {
     if (!isSupabaseConfigured()) {
-      return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
+      return apiError("Supabase not configured", { status: 500, requestId });
     }
 
     const supabase = createSupabaseServerClient();
@@ -245,6 +247,6 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Unexpected reports export error", error);
-    return NextResponse.json({ error: "Unable to export report" }, { status: 500 });
+    return apiError("Unable to export report", { status: 500, requestId });
   }
 }

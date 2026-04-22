@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createSupabaseAdminClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { endRequestLog, logRequestError, logRequestEvent, startRequestLog } from "@/lib/observability/request";
+import { getCurrentSessionUser } from "@/lib/auth/session";
+import { apiError, apiSuccess } from "@/lib/api/response";
 
 type PosAction = "checkout" | "refund" | "void";
 
@@ -226,7 +228,7 @@ export async function POST(req: Request) {
       logRequestEvent(logContext, event, details as never);
     }
     endRequestLog(logContext, status);
-    return NextResponse.json({ error: errorMessage, requestId: logContext.requestId }, { status });
+    return apiError(errorMessage, { status, requestId: logContext.requestId });
   };
 
   try {
@@ -235,6 +237,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
+    const sessionUser = await getCurrentSessionUser();
     const actionRaw = String(body.action ?? "checkout").trim().toLowerCase();
     const action: PosAction = actionRaw === "refund" ? "refund" : actionRaw === "void" ? "void" : "checkout";
     const cartItems = Array.isArray(body.items) ? (body.items as PosCartItem[]) : [];
@@ -247,11 +250,16 @@ export async function POST(req: Request) {
     const discountValue = Number(body.discountValue ?? 0);
     const cashierUserIdRaw = String(body.cashierUserId ?? "").trim();
     const cashierUserId = cashierUserIdRaw.length > 0 ? cashierUserIdRaw : null;
-    logContext.userId = cashierUserId;
+    const actorUserId = cashierUserId ?? sessionUser?.userId ?? null;
+    logContext.userId = actorUserId;
+
+    const lineItemCount = cartItems.length;
+    const requestedUnitCount = cartItems.reduce((sum, item) => sum + Math.max(0, Number(item.quantity ?? 0)), 0);
 
     logRequestEvent(logContext, "payload_received", {
       action,
-      itemCount: cartItems.length,
+      lineItemCount,
+      requestedUnitCount,
       paymentMethod,
     } as never);
 
@@ -277,7 +285,7 @@ export async function POST(req: Request) {
     const supabase = createSupabaseAdminClient();
 
     // Keep audit writes resilient: only persist actor_user_id/cashier_user_id if a matching profile exists.
-    let actorUserIdForWrite: string | null = cashierUserId;
+    let actorUserIdForWrite: string | null = actorUserId;
     if (actorUserIdForWrite) {
       const { data: actorProfile, error: actorProfileError } = await withSupabaseRetry(() =>
         supabase
@@ -546,13 +554,14 @@ export async function POST(req: Request) {
     logRequestEvent(logContext, "transaction_persisted", {
       orderId: persistedOrder?.id ?? order.id,
       action,
-      itemCount: receiptItems.reduce((sum, item) => sum + item.quantity, 0),
+      lineItemCount: receiptItems.length,
+      unitCount: receiptItems.reduce((sum, item) => sum + item.quantity, 0),
       totalAmount: finalTotal,
     } as never);
     endRequestLog(logContext, 200);
 
-    return NextResponse.json({
-      data: {
+    return apiSuccess(
+      {
         order: persistedOrder ?? null,
         action,
         sourceOrderNumber: sourceOrderNumber || null,
@@ -570,27 +579,25 @@ export async function POST(req: Request) {
         orderStatus,
         orderPersistence: persistedOrder ? "saved" : "unknown",
         orderTable: "orders",
-        requestId: logContext.requestId,
+        lineItemCount: receiptItems.length,
         itemCount: receiptItems.reduce((sum, item) => sum + item.quantity, 0),
         items: receiptItems,
       },
-    });
+      logContext.requestId,
+    );
   } catch (error) {
     if (error instanceof Error && error.message.includes("SUPABASE_SERVICE_ROLE_KEY")) {
       await logRequestError(logContext, "pos_service_key_missing", error);
       endRequestLog(logContext, 500);
-      return NextResponse.json(
-        {
-          error: "POS write operations require SUPABASE_SERVICE_ROLE_KEY in environment variables.",
-          requestId: logContext.requestId,
-        },
-        { status: 500 },
-      );
+      return apiError("POS write operations require SUPABASE_SERVICE_ROLE_KEY in environment variables.", {
+        status: 500,
+        requestId: logContext.requestId,
+      });
     }
 
     console.error("Unexpected POS checkout error", error);
     await logRequestError(logContext, "pos_unexpected_error", error);
     endRequestLog(logContext, 500);
-    return NextResponse.json({ error: "Unable to complete sale", requestId: logContext.requestId }, { status: 500 });
+    return apiError("Unable to complete sale", { status: 500, requestId: logContext.requestId });
   }
 }

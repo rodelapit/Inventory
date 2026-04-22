@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createSupabaseAdminClient, createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { endRequestLog, logRequestError, logRequestEvent, startRequestLog } from "@/lib/observability/request";
+import { apiError, apiSuccess } from "@/lib/api/response";
 
 type ProductSelectRow = {
   sku: string;
@@ -36,7 +37,7 @@ export async function GET() {
 
   if (!isSupabaseConfigured()) {
     endRequestLog(context, 500);
-    return NextResponse.json({ error: "Supabase not configured", data: [], requestId: context.requestId }, { status: 500 });
+    return apiError("Supabase not configured", { status: 500, requestId: context.requestId });
   }
 
   try {
@@ -64,15 +65,11 @@ export async function GET() {
       });
       endRequestLog(context, status);
 
-      return NextResponse.json(
-        {
-          error: message,
-          code,
-          data: [],
-          requestId: context.requestId,
-        },
-        { status },
-      );
+      return apiError(message, {
+        status,
+        requestId: context.requestId,
+        code,
+      });
     }
     logRequestEvent(context, "products_listed", { count: data?.length ?? 0 } as never);
     endRequestLog(context, 200);
@@ -88,11 +85,11 @@ export async function GET() {
       storageZone: p.storage_zone ?? null,
     }));
 
-    return NextResponse.json({ data: rows, requestId: context.requestId });
+    return apiSuccess(rows, context.requestId);
   } catch (err) {
     await logRequestError(context, "products_list_unexpected", err);
     endRequestLog(context, 500);
-    return NextResponse.json({ error: "Unexpected error", data: [], requestId: context.requestId }, { status: 500 });
+    return apiError("Unexpected error", { status: 500, requestId: context.requestId });
   }
 }
 
@@ -113,12 +110,12 @@ export async function POST(req: Request) {
 
     if (!name) {
       endRequestLog(context, 400);
-      return NextResponse.json({ error: "Product name required", requestId: context.requestId }, { status: 400 });
+      return apiError("Product name required", { status: 400, requestId: context.requestId });
     }
 
     if (!isSupabaseConfigured()) {
       endRequestLog(context, 500);
-      return NextResponse.json({ error: "Supabase not configured", requestId: context.requestId }, { status: 500 });
+      return apiError("Supabase not configured", { status: 500, requestId: context.requestId });
     }
 
     // Auto-generate SKU if not provided
@@ -162,19 +159,15 @@ export async function POST(req: Request) {
         error.message.toLowerCase().includes("row-level security");
 
       if (isRlsError) {
-        return NextResponse.json(
-          {
-            error:
-              "Insert blocked by Supabase RLS. Add SUPABASE_SERVICE_ROLE_KEY to .env.local or create an INSERT policy for your authenticated role.",
-            requestId: context.requestId,
-          },
-          { status: 403 },
+        return apiError(
+          "Insert blocked by Supabase RLS. Add SUPABASE_SERVICE_ROLE_KEY to .env.local or create an INSERT policy for your authenticated role.",
+          { status: 403, requestId: context.requestId },
         );
       }
 
       await logRequestError(context, "products_create_failed", error);
       endRequestLog(context, 500);
-      return NextResponse.json({ error: error.message, requestId: context.requestId }, { status: 500 });
+      return apiError(error.message, { status: 500, requestId: context.requestId });
     }
 
     // invalidate cached server-rendered pages that depend on products
@@ -190,24 +183,20 @@ export async function POST(req: Request) {
 
     logRequestEvent(context, "product_created", { sku, stock_level } as never);
     endRequestLog(context, 200);
-    return NextResponse.json({ data: data, requestId: context.requestId });
+    return apiSuccess(data, context.requestId);
   } catch (err) {
     console.error("Unexpected error in POST /api/products", err);
 
     if (err instanceof Error && err.message.includes("SUPABASE_SERVICE_ROLE_KEY")) {
-      return NextResponse.json(
-        {
-          error:
-            "SUPABASE_SERVICE_ROLE_KEY is not configured. Add it to .env.local so server API routes can write products.",
-          requestId: context.requestId,
-        },
-        { status: 500 },
+      return apiError(
+        "SUPABASE_SERVICE_ROLE_KEY is not configured. Add it to .env.local so server API routes can write products.",
+        { status: 500, requestId: context.requestId },
       );
     }
 
     await logRequestError(context, "products_create_unexpected", err);
     endRequestLog(context, 500);
-    return NextResponse.json({ error: "Unexpected error", requestId: context.requestId }, { status: 500 });
+    return apiError("Unexpected error", { status: 500, requestId: context.requestId });
   }
 }
 
@@ -222,7 +211,7 @@ export async function PATCH(req: Request) {
   try {
     if (!isSupabaseConfigured()) {
       endRequestLog(context, 500);
-      return NextResponse.json({ error: "Supabase not configured", requestId: context.requestId }, { status: 500 });
+      return apiError("Supabase not configured", { status: 500, requestId: context.requestId });
     }
 
     const body = await req.json();
@@ -231,12 +220,12 @@ export async function PATCH(req: Request) {
 
     if (!sku) {
       endRequestLog(context, 400);
-      return NextResponse.json({ error: "SKU is required", requestId: context.requestId }, { status: 400 });
+      return apiError("SKU is required", { status: 400, requestId: context.requestId });
     }
 
     if (Number.isNaN(inputStock) || inputStock < 0) {
       endRequestLog(context, 400);
-      return NextResponse.json({ error: "stockLevel must be a non-negative number", requestId: context.requestId }, { status: 400 });
+      return apiError("stockLevel must be a non-negative number", { status: 400, requestId: context.requestId });
     }
 
     const stockLevel = Math.floor(inputStock);
@@ -257,7 +246,7 @@ export async function PATCH(req: Request) {
       console.error("API /api/products patch error", error);
       await logRequestError(context, "products_adjust_stock_failed", error, { sku, stockLevel } as never);
       endRequestLog(context, 500);
-      return NextResponse.json({ error: error.message, requestId: context.requestId }, { status: 500 });
+      return apiError(error.message, { status: 500, requestId: context.requestId });
     }
 
     try {
@@ -274,11 +263,11 @@ export async function PATCH(req: Request) {
 
     logRequestEvent(context, "product_stock_adjusted", { sku, stockLevel, status } as never);
     endRequestLog(context, 200);
-    return NextResponse.json({ data, requestId: context.requestId });
+    return apiSuccess(data, context.requestId);
   } catch (err) {
     console.error("Unexpected error in PATCH /api/products", err);
     await logRequestError(context, "products_adjust_stock_unexpected", err);
     endRequestLog(context, 500);
-    return NextResponse.json({ error: "Unexpected error", requestId: context.requestId }, { status: 500 });
+    return apiError("Unexpected error", { status: 500, requestId: context.requestId });
   }
 }

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ProductManagementSection } from "./ProductManagementSection";
 import type { ProductFeedItem } from "@/data/dashboard";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { parseApiError } from "@/lib/api/client-error";
 
 type ProductManagementSectionLiveProps = {
   initialProductFeed: ProductFeedItem[];
@@ -46,7 +47,7 @@ export function ProductManagementSectionLive({
 
       const json = await res.json();
       if (!res.ok) {
-        setActionError(json?.error ?? "Failed to update stock level.");
+        setActionError(parseApiError(res, json, "Failed to update stock level"));
         return;
       }
 

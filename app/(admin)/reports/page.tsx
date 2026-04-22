@@ -252,17 +252,22 @@ async function loadReportsData(): Promise<{ productFeed: ProductFeedItem[]; zone
 export default async function ReportsPage({
   searchParams,
 }: {
-  searchParams?: {
-    page?: string;
-    q?: string;
-    status?: string;
-  };
+  searchParams?: Promise<{
+    page?: string | string[];
+    q?: string | string[];
+    status?: string | string[];
+  }>;
 }) {
+  const resolvedSearchParams = (await searchParams) ?? {};
+
+  const getParam = (value: string | string[] | undefined) =>
+    Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
+
   const liveDataUnavailable = !isSupabaseConfigured();
   const { productFeed, zoneCards, salesSummary } = await loadReportsData();
 
-  const query = String(searchParams?.q ?? "").trim();
-  const statusRaw = String(searchParams?.status ?? "all").trim().toLowerCase();
+  const query = String(getParam(resolvedSearchParams.q)).trim();
+  const statusRaw = String(getParam(resolvedSearchParams.status) || "all").trim().toLowerCase();
   const statusFilter =
     statusRaw === "delivered" ||
     statusRaw === "in-transit" ||
@@ -271,7 +276,7 @@ export default async function ReportsPage({
     statusRaw === "voided"
       ? statusRaw
       : "all";
-  const parsedPage = Number(searchParams?.page ?? 1);
+  const parsedPage = Number(getParam(resolvedSearchParams.page) || 1);
   const currentPage = Number.isFinite(parsedPage) && parsedPage > 0 ? Math.floor(parsedPage) : 1;
 
   const totalProducts = productFeed.length;

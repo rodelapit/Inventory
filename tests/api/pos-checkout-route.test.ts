@@ -30,6 +30,10 @@ vi.mock("@/lib/supabase/server", () => ({
   createSupabaseAdminClient: () => currentClient,
 }));
 
+vi.mock("@/lib/auth/session", () => ({
+  getCurrentSessionUser: vi.fn(async () => null),
+}));
+
 function createMockClient() {
   const calls = {
     orderItemsInsert: 0,

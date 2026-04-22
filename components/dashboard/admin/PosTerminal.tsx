@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Banknote, CreditCard, Minus, Plus, Search, ShoppingCart, Trash2 } from "lucide-react";
+import { parseApiError } from "@/lib/api/client-error";
 
 type PosProduct = {
   sku: string;
@@ -174,9 +175,7 @@ export function PosTerminal({ initialProducts, actorUserId }: PosTerminalProps) 
 
       const json = await res.json();
       if (!res.ok || !json?.data) {
-        const requestId = String(json?.requestId ?? "").trim();
-        const reason = String(json?.error ?? "Unable to complete sale.");
-        setActionError(requestId ? `${reason} (Ref: ${requestId})` : reason);
+        setActionError(parseApiError(res, json, "Unable to complete sale."));
         return;
       }
 
@@ -234,9 +233,7 @@ export function PosTerminal({ initialProducts, actorUserId }: PosTerminalProps) 
 
       const json = await res.json();
       if (!res.ok || !json?.data) {
-        const requestId = String(json?.requestId ?? "").trim();
-        const reason = String(json?.error ?? `Unable to ${action} sale.`);
-        setActionError(requestId ? `${reason} (Ref: ${requestId})` : reason);
+        setActionError(parseApiError(res, json, `Unable to ${action} sale.`));
         return;
       }
 

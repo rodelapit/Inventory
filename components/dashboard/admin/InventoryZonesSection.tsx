@@ -3,6 +3,7 @@
 import { useState, FormEvent, useEffect } from "react";
 import { Plus, X } from "lucide-react";
 import { InventoryZoneCard } from "./InventoryZoneCard";
+import { parseApiError } from "@/lib/api/client-error";
 
 export type InventoryZone = {
   id: string;
@@ -115,8 +116,7 @@ export function InventoryZonesSection({ initialZones }: InventoryZonesSectionPro
       .then(async (res) => {
         if (!res.ok) {
           const json = await res.json().catch(() => null);
-          const msg = json?.error || `Failed to save zone (${res.status})`;
-          setError(msg);
+          setError(parseApiError(res, json, "Failed to save zone"));
         }
       })
       .catch((err) => {
