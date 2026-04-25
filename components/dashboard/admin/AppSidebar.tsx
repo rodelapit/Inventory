@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { BarChart3, ChevronRight, Home, Package, ReceiptText, ShieldCheck, Users } from "lucide-react";
+import { BarChart3, ChevronRight, Home, LogOut, Package, ReceiptText, ShieldCheck, Users } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const navItems = [
@@ -111,6 +111,16 @@ export function AppSidebar() {
             );
           })}
         </nav>
+
+        <form action="/logout" method="post" className="mt-3">
+          <button
+            type="submit"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
+          >
+            <LogOut className="h-4 w-4" />
+            Logout
+          </button>
+        </form>
       </div>
 
       <div className="relative hidden h-full flex-col overflow-x-hidden overflow-y-auto lg:flex">
@@ -165,6 +175,16 @@ export function AppSidebar() {
         </div>
 
         <div className="mt-auto p-5">
+          <form action="/logout" method="post" className="mb-4">
+            <button
+              type="submit"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
+            >
+              <LogOut className="h-4 w-4" />
+              Logout
+            </button>
+          </form>
+
           <div className="overflow-hidden rounded-[28px] border border-slate-900/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(240,249,255,0.82))] p-5 shadow-[0_24px_60px_rgba(148,163,184,0.16)]">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
               Warehouse health

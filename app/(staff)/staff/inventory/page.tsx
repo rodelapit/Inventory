@@ -33,6 +33,17 @@ type ZoneRow = {
   color?: string | null;
 };
 
+function getSupabaseErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object") {
+    const maybeError = error as { message?: unknown };
+    if (typeof maybeError.message === "string" && maybeError.message.trim().length > 0) {
+      return maybeError.message;
+    }
+  }
+  return "Unable to load inventory data.";
+}
+
 function normalizeZoneColor(value: string | null | undefined): InventoryZone["color"] {
   const color = String(value ?? "").trim().toLowerCase();
   if (color === "indigo" || color === "cyan" || color === "amber" || color === "blue" || color === "violet" || color === "pink") {
@@ -56,6 +67,7 @@ export default async function StaffInventoryPage() {
   // fetch latest products directly from Supabase
   let products: InventoryProduct[] = [];
   let configuredZones: InventoryZone[] = [];
+  let loadError: string | null = null;
   if (isSupabaseConfigured()) {
     try {
       const supabase = createSupabaseServerClient();
@@ -76,6 +88,10 @@ export default async function StaffInventoryPage() {
         }));
       }
 
+      if (productError && !loadError) {
+        loadError = getSupabaseErrorMessage(productError);
+      }
+
       if (!zoneError && Array.isArray(zoneData)) {
         configuredZones = (zoneData as ZoneRow[]).map((zone) => {
           const id = String(zone.id ?? "").trim().toUpperCase();
@@ -93,7 +109,12 @@ export default async function StaffInventoryPage() {
           };
         });
       }
+
+      if (zoneError && !loadError) {
+        loadError = getSupabaseErrorMessage(zoneError);
+      }
     } catch {
+      loadError = "Unable to load inventory data right now.";
       products = [];
       configuredZones = [];
     }
@@ -172,6 +193,11 @@ export default async function StaffInventoryPage() {
 
             <div className="px-4 py-6 sm:px-8 lg:px-10">
               <div className="mx-auto max-w-6xl space-y-8">
+                {loadError ? (
+                  <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+                    Inventory data could not be loaded: {loadError}
+                  </div>
+                ) : null}
                 <section className="space-y-4">
                   <div>
                     <h1 className="text-3xl font-bold text-emerald-950 sm:text-4xl">

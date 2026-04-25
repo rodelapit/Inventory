@@ -4,6 +4,12 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createSupabaseAdminClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
+function isRedirectError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const digest = (error as { digest?: unknown }).digest;
+  return typeof digest === "string" && digest.startsWith("NEXT_REDIRECT");
+}
+
 export async function createStaffAccount(formData: FormData) {
   const fullName = String(formData.get("fullName") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
@@ -37,11 +43,20 @@ export async function createStaffAccount(formData: FormData) {
     if (error || !data?.user) {
       console.error("[users:create] auth.admin.createUser failed", error);
       const message = String(error?.message ?? "").toLowerCase();
-      if (message.includes("already") || message.includes("exists")) {
+      if (
+        message.includes("already") ||
+        message.includes("exists") ||
+        message.includes("duplicate") ||
+        message.includes("unique") ||
+        message.includes("registered")
+      ) {
         redirect("/users?error=email-exists");
       }
       if (message.includes("service_role") || message.includes("not authorized") || message.includes("forbidden")) {
         redirect("/users?error=service-role-missing");
+      }
+      if (message.includes("password") && message.includes("weak")) {
+        redirect("/users?error=weak-password");
       }
       redirect("/users?error=create-failed");
     }
@@ -53,21 +68,35 @@ export async function createStaffAccount(formData: FormData) {
       role: "staff",
     };
 
-    const { error: profileUpsertError } = await adminClient.from("profiles").upsert(profilePayload, {
-      onConflict: "user_id",
-    });
+    const { data: existingProfile, error: profileLookupError } = await adminClient
+      .from("profiles")
+      .select("user_id")
+      .eq("user_id", data.user.id)
+      .maybeSingle();
 
-    if (profileUpsertError) {
-      console.error("[users:create] profiles upsert failed", profileUpsertError);
-      const profileMessage = String(profileUpsertError.message ?? "").toLowerCase();
+    if (profileLookupError) {
+      console.error("[users:create] profiles lookup failed", profileLookupError);
+      redirect("/users?error=profile-sync-failed");
+    }
 
-      if (profileMessage.includes("no unique or exclusion constraint") || profileMessage.includes("on conflict")) {
-        const { error: profileInsertError } = await adminClient.from("profiles").insert(profilePayload);
-        if (profileInsertError) {
-          console.error("[users:create] profiles insert fallback failed", profileInsertError);
-          redirect("/users?error=profile-sync-failed");
-        }
-      } else {
+    if (existingProfile?.user_id) {
+      const { error: profileUpdateError } = await adminClient
+        .from("profiles")
+        .update({
+          full_name: fullName,
+          email,
+          role: "staff",
+        })
+        .eq("user_id", data.user.id);
+
+      if (profileUpdateError) {
+        console.error("[users:create] profiles update failed", profileUpdateError);
+        redirect("/users?error=profile-sync-failed");
+      }
+    } else {
+      const { error: profileInsertError } = await adminClient.from("profiles").insert(profilePayload);
+      if (profileInsertError) {
+        console.error("[users:create] profiles insert failed", profileInsertError);
         redirect("/users?error=profile-sync-failed");
       }
     }
@@ -75,6 +104,10 @@ export async function createStaffAccount(formData: FormData) {
     revalidatePath("/users");
     redirect("/users?created=1");
   } catch (err) {
+    if (isRedirectError(err)) {
+      throw err;
+    }
+
     console.error("[users:create] unexpected failure", err);
     const message = String((err as { message?: string } | null)?.message ?? "").toLowerCase();
     if (message.includes("service_role") || message.includes("missing")) {

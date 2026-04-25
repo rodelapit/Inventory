@@ -36,6 +36,8 @@ type OrderRealtimeRow = {
   created_at?: string | null;
 };
 
+const EXPIRY_ALERT_WINDOW_DAYS = 30;
+
 function daysUntil(date: Date): number {
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -69,7 +71,7 @@ function buildActiveAlerts(productFeed: ProductFeedItem[]): ActiveAlert[] {
       return { item, days };
     })
     .filter((entry): entry is { item: ProductFeedItem; days: number } => {
-      return entry !== null && entry.days >= 0 && entry.days <= 14;
+      return entry !== null && entry.days >= 0 && entry.days <= EXPIRY_ALERT_WINDOW_DAYS;
     })
     .sort((a, b) => a.days - b.days)[0];
 
@@ -77,8 +79,8 @@ function buildActiveAlerts(productFeed: ProductFeedItem[]): ActiveAlert[] {
     const { item, days } = expiringSoon;
     const dayLabel = days === 1 ? "day" : "days";
     alerts.push({
-      title: "Expiring soon",
-      message: `${item.productName} expires in ${days} ${dayLabel}`,
+      title: "Expiry warning",
+      message: `${item.productName} expires in ${days} ${dayLabel} (within 30-day window)`,
       age: "Live update",
       type: days <= 3 ? "error" : "warning",
     });

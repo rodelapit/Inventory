@@ -8,11 +8,22 @@ import { createStaffAccount } from "./user-management-actions";
 type User = {
   id: string;
   name: string;
-    email: string;
+  email: string;
   role: "Owner" | "Manager" | "Staff";
   status: "Active" | "Invited" | "Disabled";
   lastSeen: string;
 };
+
+function getSupabaseErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object") {
+    const maybeError = error as { message?: unknown };
+    if (typeof maybeError.message === "string" && maybeError.message.trim().length > 0) {
+      return maybeError.message;
+    }
+  }
+  return "Unable to load users.";
+}
 
 function mapRole(roleValue: unknown): User["role"] {
   const role = String(roleValue ?? "").toLowerCase();
@@ -61,7 +72,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
 
       if (authResult.status === "fulfilled") {
         if (authResult.value.error) {
-          loadError = "Unable to load authentication users from Supabase admin API.";
+          loadError = getSupabaseErrorMessage(authResult.value.error);
         } else {
           authUsers = authResult.value.data?.users ?? [];
         }
@@ -72,7 +83,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
       if (profilesResult.status === "fulfilled") {
         if (profilesResult.value.error) {
           if (!loadError) {
-            loadError = "Unable to load profile records from Supabase.";
+            loadError = getSupabaseErrorMessage(profilesResult.value.error);
           }
         } else {
           profileRows = (profilesResult.value.data ?? []) as ProfileRow[];
@@ -202,7 +213,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                   </div>
 
                   {loadError && (
-                    <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                      <div className="mb-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
                       {loadError}
                     </div>
                   )}

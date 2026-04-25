@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { parseApiError } from "@/lib/api/client-error";
 
@@ -9,11 +9,32 @@ type ProductRow = {
   name: string;
   category: string;
   quantity: number;
+  expiration?: string | null;
   status: "In Stock" | "Low" | "Critical";
   price: number;
   supplier: string;
   storageZone?: string | null;
 };
+
+const EXPIRY_WARNING_DAYS = 30;
+
+function daysUntil(value?: string | null): number | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function formatExpiration(value?: string | null): string {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleDateString();
+}
 
 export default function ProductsClient({
   initialRows,
@@ -32,51 +53,84 @@ export default function ProductsClient({
   const [search, setSearch] = useState(searchFromUrl);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "in-stock" | "low" | "critical">("all");
+  const abortRef = useRef<AbortController | null>(null);
   const [form, setForm] = useState({
     name: "",
     category: "",
     quantity: "",
     price: "",
     status: "In Stock",
+    expiration: "",
     supplier: "",
     storage_zone: "",
   });
 
+  const loadProducts = useCallback(async (showLoading = true) => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    if (showLoading) {
+      setLoading(true);
+    }
+
+    try {
+      const res = await fetch("/api/products", { cache: "no-store", signal: controller.signal });
+      const json = await res.json();
+
+      if (!res.ok) {
+        setLoadError(parseApiError(res, json, "Request failed"));
+        return;
+      }
+
+      if (json && Array.isArray(json.data)) {
+        setRows(json.data);
+        setLoadError(null);
+      }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        return;
+      }
+
+      console.warn("Failed to fetch products client-side", err);
+      setLoadError("Network error while loading products. Check your Supabase URL and DNS connectivity.");
+    } finally {
+      if (showLoading) {
+        setLoading(false);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     let mounted = true;
-    async function load() {
-      setLoading(true);
+
+    async function loadInitial() {
       try {
-        const res = await fetch("/api/products", { cache: "no-store" });
-        const json = await res.json();
-        if (!mounted) return;
-
-        if (!res.ok) {
-          setLoadError(parseApiError(res, json, "Request failed"));
-          return;
-        }
-
-        if (json && Array.isArray(json.data)) {
-          setRows(json.data);
-          setLoadError(null);
-        }
-      } catch (err) {
-        console.warn("Failed to fetch products client-side", err);
-        if (mounted) {
-          setLoadError("Network error while loading products. Check your Supabase URL and DNS connectivity.");
-        }
+        await loadProducts(true);
       } finally {
-        if (mounted) setLoading(false);
+        if (!mounted) {
+          abortRef.current?.abort();
+        }
       }
     }
 
-    load();
-    const t = setInterval(load, 5000);
+    function onVisibleOrFocused() {
+      if (document.visibilityState === "visible") {
+        void loadProducts(false);
+      }
+    }
+
+    void loadInitial();
+    window.addEventListener("focus", onVisibleOrFocused);
+    document.addEventListener("visibilitychange", onVisibleOrFocused);
+
     return () => {
       mounted = false;
-      clearInterval(t);
+      window.removeEventListener("focus", onVisibleOrFocused);
+      document.removeEventListener("visibilitychange", onVisibleOrFocused);
+      abortRef.current?.abort();
     };
-  }, []);
+  }, [loadProducts]);
 
   useEffect(() => {
     setSearch(searchFromUrl);
@@ -99,13 +153,23 @@ export default function ProductsClient({
           name: p.product_name,
           category: p.category ?? "",
           quantity: p.stock_level ?? 0,
+          expiration: p.expiration ?? null,
           status: p.status ?? "In Stock",
           price: Number(p.price ?? 0),
           supplier: p.supplier ?? "",
           storageZone: p.storage_zone ?? null,
         };
         setRows((r) => [newRow, ...r]);
-        setForm({ name: "", category: "", quantity: "", price: "", status: "In Stock", supplier: "", storage_zone: "" });
+        setForm({
+          name: "",
+          category: "",
+          quantity: "",
+          price: "",
+          status: "In Stock",
+          expiration: "",
+          supplier: "",
+          storage_zone: "",
+        });
         setShowModal(false);
       } else {
         console.warn("Insert failed", json);
@@ -144,6 +208,15 @@ export default function ProductsClient({
 
     return matchesSearch && matchesCategory && matchesStatus;
   });
+
+  const expiringWithinWarningWindow = rows
+    .map((row) => ({ row, days: daysUntil(row.expiration) }))
+    .filter((entry): entry is { row: ProductRow; days: number } => {
+      return entry.days !== null && entry.days >= 0 && entry.days <= EXPIRY_WARNING_DAYS;
+    })
+    .sort((a, b) => a.days - b.days);
+
+  const nextExpiryItem = expiringWithinWarningWindow[0] ?? null;
 
   function getStatusPill(status: ProductRow["status"]) {
     if (status === "Critical") {
@@ -206,6 +279,14 @@ export default function ProductsClient({
 
           <button className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition hover:bg-slate-50 sm:text-sm">
             Export
+          </button>
+
+          <button
+            type="button"
+            onClick={() => void loadProducts(true)}
+            className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition hover:bg-slate-50 sm:text-sm"
+          >
+            Refresh
           </button>
 
           <button
@@ -291,6 +372,17 @@ export default function ProductsClient({
                 </select>
               </div>
               <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-500">Expiration Date</label>
+                <input
+                  type="date"
+                  aria-label="Expiration date"
+                  title="Expiration date"
+                  value={form.expiration}
+                  onChange={(e) => updateField("expiration", e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-emerald-400"
+                />
+              </div>
+              <div>
                 <label className="mb-1 block text-xs font-semibold text-slate-500">Storage Zone</label>
                 <select
                   aria-label="Storage zone"
@@ -339,6 +431,11 @@ export default function ProductsClient({
       )}
 
       <div className="min-h-0 overflow-x-auto px-2 sm:px-4">
+        {nextExpiryItem ? (
+          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 sm:text-sm">
+            Expiry alert: {expiringWithinWarningWindow.length} product(s) expire within 30 days. Nearest: {nextExpiryItem.row.name} in {nextExpiryItem.days} day{nextExpiryItem.days === 1 ? "" : "s"}.
+          </div>
+        ) : null}
         {loadError ? (
           <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800 sm:text-sm">
             Products cannot be loaded right now: {loadError}
@@ -351,6 +448,7 @@ export default function ProductsClient({
               <th className="px-3 py-3 sm:px-4">Product</th>
               <th className="px-3 py-3 sm:px-4">Category</th>
               <th className="px-3 py-3 sm:px-4">Quantity</th>
+              <th className="px-3 py-3 sm:px-4">Expiration</th>
               <th className="px-3 py-3 sm:px-4">Status</th>
               <th className="px-3 py-3 sm:px-4">Price</th>
               <th className="px-3 py-3 sm:px-4">Supplier</th>
@@ -364,6 +462,7 @@ export default function ProductsClient({
                 <td className="px-3 py-3 font-semibold text-slate-900 sm:px-4">{row.name}</td>
                 <td className="px-3 py-3 text-slate-600 sm:px-4">{row.category}</td>
                 <td className="px-3 py-3 font-medium text-slate-800 sm:px-4">{row.quantity}</td>
+                <td className="px-3 py-3 text-slate-600 sm:px-4">{formatExpiration(row.expiration)}</td>
                 <td className="px-3 py-3 sm:px-4">
                   <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold sm:text-xs ${getStatusPill(row.status)}`}>
                     {getStatusLabel(row.status)}
@@ -380,14 +479,14 @@ export default function ProductsClient({
             ))}
             {!loading && filteredRows.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-3 py-8 text-center text-slate-500">
+                <td colSpan={9} className="px-3 py-8 text-center text-slate-500">
                   No products match your filters.
                 </td>
               </tr>
             )}
             {loading && (
               <tr>
-                <td colSpan={8} className="px-3 py-8 text-center text-slate-500">
+                <td colSpan={9} className="px-3 py-8 text-center text-slate-500">
                   Loading latest products...
                 </td>
               </tr>

@@ -3,17 +3,21 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseAdminClient, createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { endRequestLog, logRequestError, logRequestEvent, startRequestLog } from "@/lib/observability/request";
 import { apiError, apiSuccess } from "@/lib/api/response";
+import { getCurrentSessionUser } from "@/lib/auth/session";
 
 type ProductSelectRow = {
   sku: string;
   product_name: string;
   category?: string | null;
   stock_level?: number | null;
+  expiration?: string | null;
   status?: string | null;
   price?: number | null;
   supplier?: string | null;
   storage_zone?: string | null;
 };
+
+const ALLOWED_PRODUCT_ROLES = new Set(["staff", "admin", "owner", "manager"]);
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -32,8 +36,36 @@ function getSupabaseErrorCode(error: unknown): string | null {
   return typeof maybeCode === "string" ? maybeCode : null;
 }
 
+async function requireProductsAccess(context: ReturnType<typeof startRequestLog>) {
+  const session = await getCurrentSessionUser();
+
+  if (!session) {
+    logRequestEvent(context, "products_access_denied", { reason: "missing_session" } as never);
+    endRequestLog(context, 401);
+    return apiError("Unauthorized", { status: 401, requestId: context.requestId });
+  }
+
+  context.userId = session.userId;
+
+  if (!ALLOWED_PRODUCT_ROLES.has(session.role)) {
+    logRequestEvent(context, "products_access_denied", { reason: "insufficient_role", role: session.role } as never);
+    endRequestLog(context, 403);
+    return apiError("Forbidden", { status: 403, requestId: context.requestId });
+  }
+
+  return null;
+}
+
+async function attachUserIfPresent(context: ReturnType<typeof startRequestLog>) {
+  const session = await getCurrentSessionUser();
+  if (session) {
+    context.userId = session.userId;
+  }
+}
+
 export async function GET() {
   const context = startRequestLog("/api/products", "products_list");
+  await attachUserIfPresent(context);
 
   if (!isSupabaseConfigured()) {
     endRequestLog(context, 500);
@@ -48,7 +80,7 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from("products")
-      .select("sku, product_name, category, stock_level, status, price, supplier, storage_zone")
+      .select("sku, product_name, category, stock_level, expiration, status, price, supplier, storage_zone")
       .order("product_name", { ascending: true });
 
     if (error) {
@@ -79,6 +111,7 @@ export async function GET() {
       name: p.product_name,
       category: p.category ?? "",
       quantity: p.stock_level ?? 0,
+      expiration: p.expiration ?? null,
       status: p.status ?? "In Stock",
       price: Number(p.price ?? 0),
       supplier: p.supplier ?? "",
@@ -96,6 +129,11 @@ export async function GET() {
 export async function POST(req: Request) {
   const context = startRequestLog("/api/products", "products_create");
   try {
+    const accessError = await requireProductsAccess(context);
+    if (accessError) {
+      return accessError;
+    }
+
     const body = await req.json();
 
     let sku = String(body.sku ?? "").trim();
@@ -209,6 +247,11 @@ function normalizeStockStatus(stockLevel: number): "In Stock" | "Low" | "Critica
 export async function PATCH(req: Request) {
   const context = startRequestLog("/api/products", "products_adjust_stock");
   try {
+    const accessError = await requireProductsAccess(context);
+    if (accessError) {
+      return accessError;
+    }
+
     if (!isSupabaseConfigured()) {
       endRequestLog(context, 500);
       return apiError("Supabase not configured", { status: 500, requestId: context.requestId });

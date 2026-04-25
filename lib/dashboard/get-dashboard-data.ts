@@ -60,6 +60,8 @@ const emptyDashboardData: DashboardData = {
   productFeed: [],
 };
 
+const EXPIRY_ALERT_WINDOW_DAYS = 30;
+
 function parseDate(value: string): Date | null {
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
@@ -98,7 +100,7 @@ function buildActiveAlerts(productFeed: ProductFeedItem[]): ActiveAlert[] {
       return { item, days };
     })
     .filter((entry): entry is { item: ProductFeedItem; days: number } => {
-      return entry !== null && entry.days >= 0 && entry.days <= 14;
+      return entry !== null && entry.days >= 0 && entry.days <= EXPIRY_ALERT_WINDOW_DAYS;
     })
     .sort((a, b) => a.days - b.days)[0];
 
@@ -106,8 +108,8 @@ function buildActiveAlerts(productFeed: ProductFeedItem[]): ActiveAlert[] {
     const { item, days } = expiringSoon;
     const dayLabel = days === 1 ? "day" : "days";
     alerts.push({
-      title: "Expiring soon",
-      message: `${item.productName} expires in ${days} ${dayLabel}`,
+      title: "Expiry warning",
+      message: `${item.productName} expires in ${days} ${dayLabel} (within 30-day window)`,
       age: "Live update",
       type: days <= 3 ? "error" : "warning",
     });

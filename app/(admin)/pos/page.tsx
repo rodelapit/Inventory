@@ -18,9 +18,20 @@ type PosProduct = {
   storageZone?: string | null;
 };
 
-async function loadPosProducts(): Promise<PosProduct[]> {
+function getSupabaseErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object") {
+    const maybeError = error as { message?: unknown };
+    if (typeof maybeError.message === "string" && maybeError.message.trim().length > 0) {
+      return maybeError.message;
+    }
+  }
+  return "Unable to load POS products.";
+}
+
+async function loadPosProducts(): Promise<{ products: PosProduct[]; loadError: string | null }> {
   if (!isSupabaseConfigured()) {
-    return [];
+    return { products: [], loadError: "Supabase is not configured." };
   }
 
   const supabase = createSupabaseServerClient();
@@ -30,8 +41,8 @@ async function loadPosProducts(): Promise<PosProduct[]> {
     .order("product_name", { ascending: true });
 
   if (error) {
-    console.error("Error loading products for POS", error);
-    return [];
+    console.warn("Error loading products for POS", error);
+    return { products: [], loadError: getSupabaseErrorMessage(error) };
   }
 
   type SupabaseProductRow = {
@@ -45,7 +56,7 @@ async function loadPosProducts(): Promise<PosProduct[]> {
     storage_zone?: string | null;
   };
 
-  return ((data ?? []) as SupabaseProductRow[]).map((product) => {
+  const products = ((data ?? []) as SupabaseProductRow[]).map((product) => {
     const rawStatus = product.status ?? "In Stock";
     const status: PosProduct["status"] =
       rawStatus === "Low" || rawStatus === "Critical" ? rawStatus : "In Stock";
@@ -61,12 +72,14 @@ async function loadPosProducts(): Promise<PosProduct[]> {
       storageZone: product.storage_zone ?? null,
     };
   });
+
+  return { products, loadError: null };
 }
 
 export default async function PosPage() {
   const sessionUser = await getCurrentSessionUser();
   const liveDataUnavailable = !isSupabaseConfigured();
-  const products = await loadPosProducts();
+  const { products, loadError } = await loadPosProducts();
 
   const totalUnits = products.reduce((sum, product) => sum + product.quantity, 0);
   const availableItems = products.filter((product) => product.quantity > 0).length;
@@ -94,6 +107,11 @@ export default async function PosPage() {
                 {liveDataUnavailable ? (
                   <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                     Live data unavailable. Supabase is not configured, so the POS catalog cannot load.
+                  </div>
+                ) : null}
+                {loadError ? (
+                  <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+                    POS catalog could not be loaded: {loadError}
                   </div>
                 ) : null}
 

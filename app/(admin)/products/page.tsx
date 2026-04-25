@@ -11,6 +11,7 @@ type ProductRow = {
   name: string;
   category: string;
   quantity: number;
+  expiration?: string | null;
   status: "In Stock" | "Low" | "Critical";
   price: number;
   supplier: string;
@@ -41,7 +42,7 @@ async function getProducts(): Promise<ProductLoadResult> {
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from("products")
-    .select("sku, product_name, category, stock_level, status, price, supplier, storage_zone")
+    .select("sku, product_name, category, stock_level, expiration, status, price, supplier, storage_zone")
     .order("product_name", { ascending: true });
 
   if (error) {
@@ -59,6 +60,7 @@ async function getProducts(): Promise<ProductLoadResult> {
     product_name: string;
     category?: string | null;
     stock_level?: number | null;
+    expiration?: string | null;
     status?: string | null;
     price?: number | null;
     supplier?: string | null;
@@ -75,6 +77,7 @@ async function getProducts(): Promise<ProductLoadResult> {
       name: p.product_name,
       category: p.category ?? "",
       quantity: p.stock_level ?? 0,
+      expiration: p.expiration ?? null,
       status,
       price: Number(p.price ?? 0),
       supplier: p.supplier ?? "",

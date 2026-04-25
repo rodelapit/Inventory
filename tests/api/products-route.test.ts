@@ -4,6 +4,15 @@ const revalidatePath = vi.fn();
 
 vi.mock("next/cache", () => ({ revalidatePath }));
 
+vi.mock("@/lib/auth/session", () => ({
+  getCurrentSessionUser: vi.fn(async () => ({
+    userId: "user-1",
+    email: "admin@example.com",
+    role: "admin",
+    accessToken: "token",
+  })),
+}));
+
 vi.mock("@/lib/observability/request", () => ({
   startRequestLog: () => ({ requestId: "req-test", route: "/api/products", action: "products_adjust_stock", startedAt: Date.now() }),
   logRequestEvent: vi.fn(),

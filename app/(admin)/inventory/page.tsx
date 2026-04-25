@@ -34,11 +34,23 @@ type ZoneRow = {
   color?: string | null;
 };
 
+function getSupabaseErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object") {
+    const maybeError = error as { message?: unknown };
+    if (typeof maybeError.message === "string" && maybeError.message.trim().length > 0) {
+      return maybeError.message;
+    }
+  }
+  return "Unable to load inventory data.";
+}
+
 // NOTE: compute dynamic totals from products when available
 export default async function InventoryPage() {
   // fetch latest products directly from Supabase to avoid server-side relative URL fetch issues
   let products: InventoryProduct[] = [];
   let configuredZones: InventoryZone[] = [];
+  let loadError: string | null = null;
   const supabaseConfigured = isSupabaseConfigured();
   if (supabaseConfigured) {
     try {
@@ -60,6 +72,10 @@ export default async function InventoryPage() {
         }));
       }
 
+      if (productError && !loadError) {
+        loadError = getSupabaseErrorMessage(productError);
+      }
+
       if (!zoneError && Array.isArray(zoneData)) {
         configuredZones = (zoneData as ZoneRow[]).map((zone) => {
           const id = String(zone.id ?? "").trim().toUpperCase();
@@ -77,8 +93,12 @@ export default async function InventoryPage() {
           };
         });
       }
+
+      if (zoneError && !loadError) {
+        loadError = getSupabaseErrorMessage(zoneError);
+      }
     } catch {
-      // keep empty products on query failure
+      loadError = "Unable to load inventory data right now.";
       products = [];
       configuredZones = [];
     }
@@ -152,6 +172,11 @@ export default async function InventoryPage() {
               {!supabaseConfigured ? (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                   Live data unavailable. Supabase is not configured, so inventory metrics may be empty.
+                </div>
+              ) : null}
+              {loadError ? (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+                  Inventory data could not be loaded: {loadError}
                 </div>
               ) : null}
               {/* Statistics Overview */}

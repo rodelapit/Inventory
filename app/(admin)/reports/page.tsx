@@ -652,13 +652,19 @@ export default async function ReportsPage({
                     </a>
                   </div>
 
-                  <form method="get" action="/reports#sales-history" className="mb-4 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-[minmax(0,1fr)_220px_auto] sm:items-end">
+                  <form
+                    method="get"
+                    action="/reports#sales-history"
+                    suppressHydrationWarning
+                    className="mb-4 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-[minmax(0,1fr)_220px_auto] sm:items-end"
+                  >
                     <label className="block">
                       <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Search</span>
                       <input
                         type="text"
                         name="q"
                         defaultValue={query}
+                        suppressHydrationWarning
                         placeholder="Order number or customer"
                         className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-hidden ring-sky-500 transition focus:ring-2"
                       />
@@ -669,6 +675,7 @@ export default async function ReportsPage({
                       <select
                         name="status"
                         defaultValue={statusFilter}
+                        suppressHydrationWarning
                         className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-hidden ring-sky-500 transition focus:ring-2"
                       >
                         <option value="all">All</option>
@@ -683,6 +690,7 @@ export default async function ReportsPage({
                     <div className="flex items-center gap-2">
                       <button
                         type="submit"
+                        suppressHydrationWarning
                         className="inline-flex items-center rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_14px_30px_rgba(14,165,233,0.35)] transition hover:bg-sky-700"
                       >
                         Apply
