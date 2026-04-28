@@ -20,6 +20,7 @@ const errorMessages: Record<string, string> = {
   "missing-fields": "Please enter both email and password.",
   "invalid-credentials": "Invalid credentials or insufficient permissions.",
   "supabase-not-configured": "Authentication is not configured yet. Contact your admin.",
+  "google-auth-disabled": "Google sign-in is disabled. Use email and password.",
   "staff-role-required": "This account is not assigned as staff.",
   "admin-role-required": "Use the admin login for admin accounts.",
 };

@@ -33,21 +33,6 @@ function SubmitButton() {
   );
 }
 
-function GoogleButton() {
-  return (
-    <Link
-      href="/auth/google"
-      suppressHydrationWarning
-      aria-label="Continue with Google"
-      title="Continue with Google"
-      className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-base font-semibold text-slate-800 transition hover:bg-slate-50"
-    >
-      <span className="text-xl leading-none">G</span>
-      Continue with Google
-    </Link>
-  );
-}
-
 export function LoginFormCard({
   action,
   title,
@@ -170,13 +155,6 @@ export function LoginFormCard({
 
         <SubmitButton />
 
-        <div className="flex items-center gap-3 py-1 text-xs uppercase tracking-[0.18em] text-slate-400">
-          <span className="h-px flex-1 bg-slate-200" />
-          <span>or</span>
-          <span className="h-px flex-1 bg-slate-200" />
-        </div>
-
-        <GoogleButton />
       </form>
 
       <div className="mt-7 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-500">
