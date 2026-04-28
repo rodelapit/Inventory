@@ -117,10 +117,17 @@ export function StaffAlertsView({
   performanceData: AdminPerformanceData;
   liveDataUnavailable: boolean;
 }) {
-  const alerts = performanceData.alertsCenter;
-  const criticalCount = alerts.filter((alert) => alert.severity === "critical").length;
-  const warningCount = alerts.filter((alert) => alert.severity === "warning").length;
-  const infoCount = alerts.filter((alert) => alert.severity === "info").length;
+  const alertsRaw = performanceData.alertsCenter;
+  const alerts = alertsRaw.map((alert) => ({
+    id: alert.id,
+    title: alert.title,
+    message: alert.message,
+    age: alert.metric,
+    type: (alert.severity === "critical" ? "error" : alert.severity === "warning" ? "warning" : "info") as "warning" | "error" | "info",
+  }));
+  const criticalCount = alertsRaw.filter((alert) => alert.severity === "critical").length;
+  const warningCount = alertsRaw.filter((alert) => alert.severity === "warning").length;
+  const infoCount = alertsRaw.filter((alert) => alert.severity === "info").length;
 
   return (
     <StaffWorkspaceShell title="Alerts Center" subtitle="Alerts center" badgeLabel="Action queue">
@@ -252,88 +259,6 @@ export function StaffReportsView({
             <p className="mt-2 text-sm text-slate-600">A staff-friendly view of sales activity and stock pressure, without the admin-only controls.</p>
           </div>
         </aside>
-      </section>
-    </StaffWorkspaceShell>
-  );
-}
-
-export function StaffTransactionsView({
-  performanceData,
-  liveDataUnavailable,
-}: {
-  performanceData: AdminPerformanceData;
-  liveDataUnavailable: boolean;
-}) {
-  const transactions = performanceData.recentOrders;
-  const totalRevenue = transactions.reduce((sum, item) => sum + item.totalAmountValue, 0);
-  const totalItems = transactions.reduce((sum, item) => sum + item.itemCount, 0);
-  const refundedCount = transactions.filter((item) => item.status === "Refunded").length;
-
-  return (
-    <StaffWorkspaceShell title="Transaction History" subtitle="Transaction history" badgeLabel="Order history">
-      {liveDataUnavailable ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Live data unavailable. Supabase is not configured, so transaction history is using the last available snapshot.
-        </div>
-      ) : null}
-
-      <section className="space-y-4">
-        <div>
-          <h1 className="text-3xl font-bold text-emerald-950 sm:text-4xl">Transaction History</h1>
-          <p className="mt-2 max-w-2xl text-sm text-slate-600 sm:text-base">Review recent sales with payment method, item count, customer, and status context.</p>
-        </div>
-      </section>
-
-      <section className="grid gap-4 sm:grid-cols-3">
-        <MetricCard title="Revenue" value={formatMoney(totalRevenue)} description="Loaded from the latest completed sales." icon={<ShoppingCart className="h-5 w-5 text-emerald-600" />} />
-        <MetricCard title="Items sold" value={totalItems} description="Units moved through POS in the current snapshot." icon={<Tag className="h-5 w-5 text-emerald-600" />} />
-        <MetricCard title="Refunded" value={refundedCount} description="Transactions marked as refunded in the feed." icon={<ReceiptText className="h-5 w-5 text-emerald-600" />} />
-      </section>
-
-      <section className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-[0_20px_50px_rgba(148,163,184,0.14)]">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-xl font-semibold text-emerald-950">Latest transactions</h2>
-            <p className="mt-1 text-sm text-slate-600">Each row includes the order header and line-item detail count.</p>
-          </div>
-          <ReceiptText className="h-5 w-5 text-emerald-600" />
-        </div>
-
-        <div className="mt-5 overflow-hidden rounded-xl border border-slate-200">
-          <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-[0.16em] text-slate-500">
-              <tr>
-                <th className="px-4 py-3">Order</th>
-                <th className="px-4 py-3">Customer</th>
-                <th className="px-4 py-3">Payment</th>
-                <th className="px-4 py-3">Items</th>
-                <th className="px-4 py-3">Amount</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 bg-white">
-              {transactions.length > 0 ? transactions.map((transaction) => (
-                <tr key={transaction.id} className="align-top text-slate-700">
-                  <td className="px-4 py-3 font-medium text-slate-950">{transaction.orderNumber}</td>
-                  <td className="px-4 py-3">{transaction.customerName}</td>
-                  <td className="px-4 py-3 uppercase tracking-[0.12em] text-slate-600">{transaction.paymentMethod}</td>
-                  <td className="px-4 py-3">{transaction.itemCount}</td>
-                  <td className="px-4 py-3 font-semibold text-slate-950">{transaction.amount}</td>
-                  <td className="px-4 py-3"><span className={`rounded-full border px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.14em] ${transaction.status === "Delivered" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : transaction.status === "Refunded" ? "border-sky-200 bg-sky-50 text-sky-700" : transaction.status === "Voided" ? "border-slate-200 bg-slate-100 text-slate-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}>{transaction.status}</span></td>
-                  <td className="px-4 py-3 text-slate-600">{formatDate(transaction.orderDateIso)}</td>
-                </tr>
-              )) : (
-                <tr><td className="px-4 py-6 text-center text-slate-500" colSpan={7}>No transaction records are available yet.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Detail view note</p>
-          <p className="mt-2 text-sm text-slate-600">Open the admin POS and Reports screens for the full receipt and line-item breakdown. This page is the staff-facing transaction index.</p>
-        </div>
       </section>
     </StaffWorkspaceShell>
   );
