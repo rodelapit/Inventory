@@ -3,13 +3,17 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { Home, Package, ClipboardList, ReceiptText } from "lucide-react";
+import { Home, Package, ClipboardList, ReceiptText, Bell, BarChart3, UserCircle2, ListOrdered } from "lucide-react";
 
 const staffNavItems = [
   { label: "Staff Home", href: "/staff", icon: Home },
   { label: "POS", href: "/staff/pos", icon: ReceiptText },
   { label: "Products", href: "/staff/products", icon: Package },
   { label: "Inventory", href: "/staff/inventory", icon: ClipboardList },
+  { label: "Reports", href: "/staff/reports", icon: BarChart3 },
+  { label: "Transactions", href: "/staff/transactions", icon: ListOrdered },
+  { label: "Alerts", href: "/staff/alerts", icon: Bell },
+  { label: "Shift Profile", href: "/staff/profile", icon: UserCircle2 },
 ];
 
 export function StaffSidebar() {

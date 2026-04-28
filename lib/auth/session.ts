@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import { getSupabaseEnv } from "@/lib/supabase/config";
+import { createSupabaseAdminClient } from "@/lib/supabase/server";
 
 type SessionRole = "staff" | "admin" | "owner" | "manager" | "unknown";
 
@@ -68,7 +69,8 @@ export async function getCurrentSessionUser(): Promise<SessionUser | null> {
 
   let profileRole: string | null = null;
   try {
-    const { data: profile } = await supabase
+    const adminClient = createSupabaseAdminClient();
+    const { data: profile } = await adminClient
       .from("profiles")
       .select("role")
       .eq("user_id", data.user.id)

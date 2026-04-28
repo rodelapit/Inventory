@@ -86,10 +86,10 @@ export function StaffHeroSection({
                   <span
                     className={`rounded-full px-2.5 py-1 text-xs font-semibold sm:text-sm ${
                       index === 0
-                        ? "bg-emerald-100 text-emerald-700"
+                        ? "bg-emerald-600 text-white"
                         : index === 1
-                        ? "bg-lime-100 text-lime-700"
-                        : "bg-emerald-50 text-emerald-700"
+                        ? "bg-emerald-500/30 text-emerald-700"
+                        : "bg-emerald-100 text-emerald-700"
                     }`}
                   >
                     {zone.zone}

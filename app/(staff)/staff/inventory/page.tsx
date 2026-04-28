@@ -53,12 +53,12 @@ function normalizeZoneColor(value: string | null | undefined): InventoryZone["co
 }
 
 const zoneColors: Record<InventoryZone["color"], { bg: string; text: string; border: string }> = {
-  indigo: { bg: "bg-indigo-500/20", text: "text-indigo-300", border: "border-indigo-500/30" },
-  cyan: { bg: "bg-cyan-500/20", text: "text-cyan-300", border: "border-cyan-500/30" },
-  amber: { bg: "bg-amber-500/20", text: "text-amber-300", border: "border-amber-500/30" },
-  blue: { bg: "bg-blue-500/20", text: "text-blue-300", border: "border-blue-500/30" },
-  violet: { bg: "bg-violet-500/20", text: "text-violet-300", border: "border-violet-500/30" },
-  pink: { bg: "bg-pink-500/20", text: "text-pink-300", border: "border-pink-500/30" },
+  indigo: { bg: "bg-indigo-50", text: "text-indigo-700", border: "border-indigo-200" },
+  cyan: { bg: "bg-cyan-50", text: "text-cyan-700", border: "border-cyan-200" },
+  amber: { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" },
+  blue: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
+  violet: { bg: "bg-violet-50", text: "text-violet-700", border: "border-violet-200" },
+  pink: { bg: "bg-pink-50", text: "text-pink-700", border: "border-pink-200" },
 };
 
 export default async function StaffInventoryPage() {
@@ -271,43 +271,73 @@ export default async function StaffInventoryPage() {
                       return (
                         <div
                           key={zone.id}
-                          className={`rounded-xl border ${colors.border} ${colors.bg} p-5 sm:p-6`}
+                          className={`rounded-3xl border ${colors.border} ${colors.bg} p-6 shadow-[0_22px_55px_rgba(148,163,184,0.18)] ring-1 ring-inset ring-slate-900/5 transition hover:-translate-y-0.5`}
                         >
-                          <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-start justify-between">
                             <div>
-                              <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${colors.text}`}>
+                              <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${colors.text}`}>
                                 {zone.label}
                               </p>
-                              <p className="mt-2 text-lg font-semibold text-emerald-50">{zone.name}</p>
+                              <p className="mt-3 text-lg font-semibold text-slate-900">{zone.name}</p>
                             </div>
-                            <TrendingUp className="h-5 w-5 text-emerald-400" />
+                            <TrendingUp className="h-5 w-5 text-emerald-500" />
                           </div>
 
-                          {/* Utilization Bar */}
-                          <div className="mt-4 space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-semibold text-emerald-300">{zone.utilization}%</span>
-                              <span className="text-xs text-emerald-300/70">
-                                {zone.current.toLocaleString()} / {zone.capacity.toLocaleString()} units
+                          {/* Utilization Progress */}
+                          <div className="mt-6">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-slate-600">Utilization</span>
+                              <span className={`text-lg font-bold ${
+                                zone.utilization >= 90
+                                  ? "text-rose-500"
+                                  : zone.utilization >= 75
+                                  ? "text-amber-500"
+                                  : "text-emerald-500"
+                              }`}>
+                                {zone.utilization}%
                               </span>
                             </div>
-                            <div className="h-2 overflow-hidden rounded-full bg-emerald-950/40">
+                            <div className="mt-3 h-3 rounded-full bg-slate-200">
                               <div
-                                className={`h-full ${utilizationColor} transition-all`}
+                                className={`h-3 rounded-full ${utilizationColor} transition-all duration-500`}
                                 style={{ width: `${zone.utilization}%` }}
                               />
                             </div>
                           </div>
 
-                          {/* Zone Details */}
-                          <div className="mt-4 grid grid-cols-2 gap-3 border-t border-emerald-900/30 pt-3">
-                            <div>
-                              <p className="text-xs text-emerald-300/70">Temperature</p>
-                              <p className="mt-1 text-sm font-semibold text-emerald-50">{zone.temperature}</p>
+                          {/* Zone Stats */}
+                          <div className="mt-6 grid grid-cols-2 gap-4">
+                            <div className="rounded-2xl bg-slate-100 p-4">
+                              <p className="text-[11px] uppercase tracking-[0.18em] text-slate-600">Current</p>
+                              <p className="mt-2 text-lg font-bold text-slate-900">
+                                {zone.current.toLocaleString()}
+                                <span className="ml-1 text-sm text-slate-500">units</span>
+                              </p>
                             </div>
-                            <div>
-                              <p className="text-xs text-emerald-300/70">Humidity</p>
-                              <p className="mt-1 text-sm font-semibold text-emerald-50">{zone.humidity}</p>
+                            <div className="rounded-2xl bg-slate-100 p-4">
+                              <p className="text-[11px] uppercase tracking-[0.18em] text-slate-600">Capacity</p>
+                              <p className="mt-2 text-lg font-bold text-slate-900">
+                                {zone.capacity.toLocaleString()}
+                                <span className="ml-1 text-sm text-slate-500">units</span>
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Environmental Data */}
+                          <div className="mt-6 flex gap-3">
+                            <div className="flex flex-1 items-center gap-3 rounded-2xl bg-slate-100 px-4 py-3">
+                              <span className="text-lg">🌡️</span>
+                              <div>
+                                <p className="text-[10px] uppercase tracking-[0.15em] text-slate-600">Temperature</p>
+                                <p className="text-sm font-semibold text-slate-900">{zone.temperature}</p>
+                              </div>
+                            </div>
+                            <div className="flex flex-1 items-center gap-3 rounded-2xl bg-slate-100 px-4 py-3">
+                              <span className="text-lg">💧</span>
+                              <div>
+                                <p className="text-[10px] uppercase tracking-[0.15em] text-slate-600">Humidity</p>
+                                <p className="text-sm font-semibold text-slate-900">{zone.humidity}</p>
+                              </div>
                             </div>
                           </div>
                         </div>

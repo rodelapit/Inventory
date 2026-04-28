@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { getCurrentSessionUser } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
 import { signupStaff } from "../login/auth-actions";
 
 export const metadata = {
@@ -20,6 +22,14 @@ const errorMessages: Record<string, string> = {
 };
 
 export default async function SignupPage({ searchParams }: SignupPageProps) {
+  const session = await getCurrentSessionUser();
+  if (!session) {
+    redirect("/login");
+  }
+  if (session.role !== "admin") {
+    redirect("/dashboard");
+  }
+
   const params = await searchParams;
   const errorKey = params?.error;
 
@@ -31,7 +41,7 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
           <p className="text-xs uppercase tracking-[0.35em] text-emerald-300">Staff onboarding</p>
           <h1 className="mt-2 text-3xl font-semibold text-white">Create staff account</h1>
           <p className="mt-3 text-slate-300">
-            Register a staff login to access the staff workspace. New accounts are linked to admin user management.
+            Create staff logins from an admin session. New accounts are linked to the user management workflow.
           </p>
 
           {errorKey && errorMessages[errorKey] && (

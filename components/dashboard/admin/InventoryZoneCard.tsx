@@ -1,9 +1,6 @@
-"use client";
-
 import { Thermometer, Droplets, TrendingUp, TrendingDown } from "lucide-react";
 
 interface InventoryZoneCardProps {
-  id: string;
   label: string;
   name: string;
   current: number;
@@ -19,7 +16,6 @@ interface InventoryZoneCardProps {
 }
 
 export function InventoryZoneCard({
-  id,
   label,
   name,
   current,

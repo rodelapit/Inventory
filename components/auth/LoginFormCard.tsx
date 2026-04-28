@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { AlertCircle, Eye, EyeOff, Info, Lock, Mail, ShieldCheck } from "lucide-react";
 
@@ -23,42 +22,29 @@ type LoginFormCardProps = {
 };
 
 function SubmitButton() {
-  const { pending } = useFormStatus();
-
   return (
     <button
       suppressHydrationWarning
       type="submit"
-      disabled={pending}
       className="mt-1 flex h-12 w-full items-center justify-center rounded-xl bg-[linear-gradient(90deg,#7ea5ef,#6cb5dc)] px-4 text-base font-semibold text-white shadow-[0_14px_30px_rgba(46,102,196,0.24)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
     >
-      {pending ? (
-        <span className="flex items-center gap-2">
-          <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/80 border-r-transparent" />
-          Signing in...
-        </span>
-      ) : (
-        "Sign In"
-      )}
+      Sign In
     </button>
   );
 }
 
 function GoogleButton() {
-  const { pending } = useFormStatus();
-
   return (
-    <button
+    <Link
+      href="/auth/google"
       suppressHydrationWarning
-      type="button"
-      disabled
-      aria-disabled="true"
-      title="Google OAuth UI is ready. Wire your Supabase OAuth callback when needed."
-      className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-base font-semibold text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-75"
+      aria-label="Continue with Google"
+      title="Continue with Google"
+      className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-base font-semibold text-slate-800 transition hover:bg-slate-50"
     >
       <span className="text-xl leading-none">G</span>
-      {pending ? "Please wait..." : "Continue with Google"}
-    </button>
+      Continue with Google
+    </Link>
   );
 }
 
@@ -72,7 +58,7 @@ export function LoginFormCard({
   roleHint = "Admins and staff have different access levels",
   errorMessage,
   successMessage,
-  forgotPasswordHref = "#",
+  forgotPasswordHref = "/forgot-password",
   footerPrimaryLabel,
   footerPrimaryHref,
   footerSecondaryLabel,

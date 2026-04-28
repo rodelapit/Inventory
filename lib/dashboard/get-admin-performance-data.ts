@@ -133,6 +133,7 @@ type ProfileCount = { count: number | null };
 const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const trafficColors = ["bg-blue-500", "bg-teal-500", "bg-sky-500", "bg-cyan-500", "bg-indigo-500"];
 
+// Provide a complete fallback dashboard payload when Supabase is offline or unconfigured.
 const emptyPerformanceData: AdminPerformanceData = {
   monthlyPoints: monthLabels.map((month) => ({ month, revenue: 0, orders: 0, profit: 0 })),
   monthlyGoals: [
@@ -191,6 +192,7 @@ const emptyPerformanceData: AdminPerformanceData = {
   totalVisits: "0",
 };
 
+// Format money consistently across dashboard charts and summary cards.
 function formatMoney(value: number): string {
   return new Intl.NumberFormat("en-PH", {
     style: "currency",
@@ -199,12 +201,14 @@ function formatMoney(value: number): string {
   }).format(value);
 }
 
+// Parse dates defensively because dashboard rows can be partially populated.
 function safeDate(value?: string | null): Date | null {
   if (!value) return null;
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+// Convert timestamps into short relative labels for the activity feed.
 function relativeTimeFrom(date?: string | null): string {
   const parsed = safeDate(date);
   if (!parsed) return "Recently";
@@ -219,6 +223,7 @@ function relativeTimeFrom(date?: string | null): string {
   return `${diffDays}d ago`;
 }
 
+// Reduce raw order statuses to the smaller set the dashboard understands.
 function normalizeOrderStatus(status?: string | null): "Delivered" | "In Transit" | "Pending" | "Voided" | "Refunded" {
   const value = (status ?? "").toLowerCase();
 
@@ -241,6 +246,7 @@ function normalizeOrderStatus(status?: string | null): "Delivered" | "In Transit
   return "Pending";
 }
 
+// Build the rolling 12-month labels used by the analytics chart.
 function getLast12MonthLabels(): string[] {
   const now = new Date();
   const labels: string[] = [];
@@ -253,6 +259,7 @@ function getLast12MonthLabels(): string[] {
   return labels;
 }
 
+// Derive alert cards from inventory, order, and zone data so operators see the urgent issues first.
 function buildAlertsCenter(
   products: ProductRow[],
   orders: OrderRow[],
@@ -381,6 +388,7 @@ function buildAlertsCenter(
 }
 
 export async function getAdminPerformanceData(): Promise<AdminPerformanceData> {
+  // Return the fallback payload when the database is not available.
   if (!isSupabaseConfigured()) {
     return emptyPerformanceData;
   }
@@ -420,6 +428,7 @@ export async function getAdminPerformanceData(): Promise<AdminPerformanceData> {
         .limit(1200),
     ]);
 
+    // Track partial failures so the dashboard can still render with degraded data.
     const hasFetchWarnings = Boolean(
       productsError || ordersError || profileError || zonesError || orderItemsError || paymentsError,
     );
@@ -431,6 +440,7 @@ export async function getAdminPerformanceData(): Promise<AdminPerformanceData> {
     const paymentRows = (payments ?? []) as PaymentRow[];
     const productById = new Map(productRows.map((product) => [product.id, product]));
 
+    // Aggregate order totals into month buckets for the revenue chart.
     const monthlyOrderMap = new Map<string, { revenue: number; orders: number }>();
     const monthSequence = getLast12MonthLabels();
 
@@ -472,6 +482,7 @@ export async function getAdminPerformanceData(): Promise<AdminPerformanceData> {
       zoneTotals.set(zone, (zoneTotals.get(zone) ?? 0) + qty);
     }
 
+    // Turn storage-zone totals into the traffic-source breakdown used by the donut chart.
     const trafficSources: TrafficSource[] = Array.from(zoneTotals.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
@@ -514,6 +525,7 @@ export async function getAdminPerformanceData(): Promise<AdminPerformanceData> {
       });
     }
 
+    // Build the recent-orders list with display labels, payment metadata, and receipt links.
     const recentOrders: OrderItem[] = orderRows.slice(0, 6).map((row) => {
       const orderNumber = row.order_number?.trim() || row.id.slice(0, 8).toUpperCase();
       const displayId = orderNumber.startsWith("#") ? orderNumber : `#${orderNumber}`;

@@ -1,5 +1,3 @@
-"use client";
-
 import { Package, Archive, TrendingUp, BarChart3 } from "lucide-react";
 
 interface InventoryStatCardProps {

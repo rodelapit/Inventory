@@ -7,7 +7,7 @@ import { BarChart3, ChevronRight, Home, LogOut, Package, ReceiptText, ShieldChec
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const navItems = [
-  { label: "Dashboard", href: "/", icon: Home },
+  { label: "Dashboard", href: "/dashboard", icon: Home },
   { label: "Inventory", href: "/inventory", icon: Package },
   { label: "Products", href: "/products", icon: Package },
   { label: "POS", href: "/pos", icon: ReceiptText },

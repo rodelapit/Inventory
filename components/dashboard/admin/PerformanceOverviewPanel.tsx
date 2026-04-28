@@ -23,6 +23,7 @@ type PerformanceOverviewPanelProps = {
 };
 
 export function PerformanceOverviewPanel({ data }: PerformanceOverviewPanelProps) {
+  // This panel is interactive, so it keeps local state for chart selection and the order drawer.
   const router = useRouter();
   const [activeMetric, setActiveMetric] = useState<MetricKey>("revenue");
   const [displaySeries, setDisplaySeries] = useState<number[]>([]);
@@ -33,11 +34,13 @@ export function PerformanceOverviewPanel({ data }: PerformanceOverviewPanelProps
   const tooltipValueRef = useRef(0);
   const tooltipFrameRef = useRef<number | null>(null);
 
+  // Derive the active metric series from the selected tab.
   const metricSeries = useMemo(
     () => data.monthlyPoints.map((point) => point[activeMetric]),
     [activeMetric, data.monthlyPoints],
   );
 
+  // Animate the chart when the metric changes instead of swapping values abruptly.
   useEffect(() => {
     if (previousSeriesRef.current.length === 0) {
       previousSeriesRef.current = metricSeries;
@@ -104,6 +107,7 @@ export function PerformanceOverviewPanel({ data }: PerformanceOverviewPanelProps
       ? `M ${linePoints.replace(/ /g, " L ")} L ${chartWidth},${chartHeight - bottomPadding} L 0,${chartHeight - bottomPadding} Z`
       : "";
 
+  // Convert traffic percentages into a CSS gradient for the donut chart.
   const trafficGradientParts = data.trafficSources.reduce<string[]>((parts, source, index) => {
     const previous = index === 0 ? 0 : parts.length === 0 ? 0 : Number(parts[parts.length - 1].split(" ")[1].replace("%", ""));
     const next = Math.min(100, previous + source.percent);
@@ -127,6 +131,7 @@ export function PerformanceOverviewPanel({ data }: PerformanceOverviewPanelProps
     }).format(value);
   };
 
+  // Track the currently hovered point so the tooltip can animate smoothly.
   const hoveredValue = hoveredIndex !== null ? metricSeries[hoveredIndex] ?? 0 : 0;
   const hoveredMonth = hoveredIndex !== null ? data.monthlyPoints[hoveredIndex]?.month ?? "" : "";
   const hoveredX = hoveredIndex !== null ? Math.round(hoveredIndex * stepX) : 0;
@@ -137,6 +142,7 @@ export function PerformanceOverviewPanel({ data }: PerformanceOverviewPanelProps
   const hoveredXPercent = Math.max(0, Math.min(100, (hoveredX / chartWidth) * 100));
   const hoveredYPercent = Math.max(8, ((hoveredY - 8) / chartHeight) * 100);
 
+  // Animate the tooltip number so hover feedback feels responsive.
   useEffect(() => {
     if (hoveredIndex === null) {
       if (tooltipFrameRef.current) {
@@ -205,6 +211,7 @@ export function PerformanceOverviewPanel({ data }: PerformanceOverviewPanelProps
     }).format(value);
   };
 
+  // Route clicks from alerts and cards to the relevant detail pages.
   const navigateTo = (href?: string) => {
     if (!href) return;
     router.push(href);
@@ -218,6 +225,7 @@ export function PerformanceOverviewPanel({ data }: PerformanceOverviewPanelProps
     }
   };
 
+  // Keep the selected order in local state so the detail drawer can open without a route change.
   const openOrderDrawer = (order: AdminPerformanceData["recentOrders"][number]) => {
     setSelectedOrder(order);
   };

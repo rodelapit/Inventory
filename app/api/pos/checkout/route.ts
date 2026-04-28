@@ -68,6 +68,7 @@ async function rollbackStockLevels(
   supabase: ReturnType<typeof createSupabaseAdminClient>,
   originalStockLevels: Map<string, number>,
 ) {
+  // Restore product counts if the transaction fails after stock has already been decremented.
   for (const [sku, stockLevel] of originalStockLevels.entries()) {
     try {
       await supabase
@@ -132,6 +133,7 @@ function isTransientFetchFailure(error: unknown): boolean {
 }
 
 async function withSupabaseRetry<T>(operation: () => PromiseLike<T>, attempts = 2): Promise<T> {
+  // Retry transient network failures so brief Supabase blips do not break the POS flow.
   let lastResult: T | null = null;
 
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
@@ -160,6 +162,7 @@ async function insertOrder(
   supabase: ReturnType<typeof createSupabaseAdminClient>,
   payload: OrderInsertPayload,
 ): Promise<{ data: OrderRow | null; error: { message: string } | null }> {
+  // Create the order header first so later inserts can reference a stable order id.
   const { data, error } = await supabase
     .from("orders")
     .insert(payload)
@@ -206,6 +209,7 @@ async function updateSourceOrderStatus(
 }
 
 async function cleanupOrderArtifacts(supabase: ReturnType<typeof createSupabaseAdminClient>, orderId: string) {
+  // Remove all related rows when a refund or void needs to unwind the sale state.
   await supabase.from("payments").delete().eq("order_id", orderId);
   await supabase.from("stock_movements").delete().eq("source_order_id", orderId);
   await supabase.from("order_items").delete().eq("order_id", orderId);
@@ -213,6 +217,7 @@ async function cleanupOrderArtifacts(supabase: ReturnType<typeof createSupabaseA
 }
 
 export async function POST(req: Request) {
+  // One endpoint handles checkout, refund, and void flows so the POS stays consistent.
   const logContext = startRequestLog("/api/pos/checkout", "pos_transaction");
 
   const fail = async (
@@ -236,6 +241,7 @@ export async function POST(req: Request) {
       return fail(500, "Supabase not configured", "supabase_not_configured");
     }
 
+    // Normalize the request payload before any inventory or order writes happen.
     const body = await req.json();
     const sessionUser = await getCurrentSessionUser();
     const actionRaw = String(body.action ?? "checkout").trim().toLowerCase();

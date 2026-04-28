@@ -151,7 +151,6 @@ export function InventoryZonesSection({ initialZones }: InventoryZonesSectionPro
         {zones.map((zone) => (
           <InventoryZoneCard
             key={zone.id}
-            id={zone.id}
             label={zone.label}
             name={zone.name}
             current={zone.current}
