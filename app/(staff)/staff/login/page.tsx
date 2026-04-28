@@ -29,7 +29,7 @@ export default async function StaffLoginPage({ searchParams }: StaffLoginPagePro
   if (session?.role === "staff") {
     redirect("/staff");
   }
-  if (session && session.role !== "staff") {
+  if (session) {
     redirect("/dashboard");
   }
 
